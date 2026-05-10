@@ -1,0 +1,40 @@
+{
+  "common": {
+    "dashboard": "لوحة القيادة",
+    "family": "العائلة",
+    "tree": "الشجرة",
+    "chat": "الدردشة",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "notifications": "التنبيهات",
+    "profile": "الملف الشخصي"
+  },
+  "dashboard": {
+    "welcome": "مرحباً بعودتك، {{name}}",
+    "total_members": "إجمالي الأعضاء",
+    "families": "العائلات",
+    "trees": "الأشجار",
+    "no_families": "لا توجد عائلات بعد",
+    "create_family": "إنشاء عائلة",
+    "join_family": "الانضمام إلى عائلة"
+  },
+  "tree": {
+    "members": "أعضاء",
+    "generations": "أجيال",
+    "alive": "على قيد الحياة",
+    "no_members": "لا يوجد أعضاء للعرض"
+  },
+  "chat": {
+    "title": "دردشة العائلة",
+    "type_message": "اكتب رسالة...",
+    "no_messages": "لا توجد رسائل بعد",
+    "online": "متصل",
+    "offline": "غير متصل"
+  }
+}

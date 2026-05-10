@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { createInvite, getFamilyInvites, deactivateInvite } from '../../services/inviteService';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
-import { X, Copy, CheckCircle, Trash2, Plus } from 'lucide-react';
+import { X, Copy, CheckCircle, Trash2, Plus, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { useTranslation } from 'react-i18next';
+import { reportError, getErrorMessage } from '../../services/errorService';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function InvitePanel({ familyId, familyName, onClose }) {
-  const { user } = useAuth();
+  const toast = useToast();
+  const { t } = useTranslation();
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [role, setRole] = useState(ROLES.VIEWER);
   const [copied, setCopied] = useState('');
+  const [showQR, setShowQR] = useState(null);
 
   useEffect(() => { loadInvites(); }, []);
 
@@ -18,27 +23,43 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
     try {
       const data = await getFamilyInvites(familyId);
       setInvites(data.filter(i => i.isActive));
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      reportError(err, 'Load invites');
+      toast.error('Failed to load invites.');
+    }
     finally { setLoading(false); }
   }
 
   async function handleCreate() {
     setCreating(true);
     try {
-      await createInvite(familyId, familyName, user.uid, role);
+      await createInvite(familyId, role);
       await loadInvites();
-    } catch (err) { console.error(err); }
+      toast.success('Invite created.');
+    } catch (err) {
+      reportError(err, 'Create invite');
+      toast.error(getErrorMessage(err, 'Failed to create invite.'));
+    }
     finally { setCreating(false); }
   }
 
   async function handleDeactivate(code) {
-    try { await deactivateInvite(code); await loadInvites(); }
-    catch (err) { console.error(err); }
+    try {
+      await deactivateInvite(code);
+      await loadInvites();
+      toast.success('Invite deactivated.');
+    }
+    catch (err) {
+      reportError(err, 'Deactivate invite');
+      toast.error(getErrorMessage(err, 'Failed to deactivate invite.'));
+    }
   }
 
   function handleCopy(code) {
-    navigator.clipboard.writeText(code);
+    const link = `${window.location.origin}/join?code=${code}`;
+    navigator.clipboard.writeText(link);
     setCopied(code);
+    toast.success('Invite link copied.');
     setTimeout(() => setCopied(''), 2000);
   }
 
@@ -46,7 +67,7 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
         <div className="modal-header">
-          <h2>Invite Members</h2>
+          <h2>{t('dashboard.join_family')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
         </div>
         <div className="modal-body">
@@ -63,31 +84,51 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
             </button>
           </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 'var(--space-sm) 0' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 'var(--space-md) 0' }} />
 
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontWeight: 500 }}>Active Invite Codes</p>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 'var(--space-sm)' }}>
+            Active Invite Links
+          </p>
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-lg)' }}><div className="spinner"></div></div>
           ) : invites.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-lg)', fontSize: 'var(--font-size-sm)' }}>
-              No active invite codes. Generate one above.
+              No active invite links. Generate one above.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
               {invites.map(inv => (
-                <div key={inv.code} className="invite-code-row">
-                  <code className="invite-code-text">{inv.code}</code>
-                  <span className="badge badge-accent">{ROLE_LABELS[inv.role]}</span>
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                    {inv.usedCount}/{inv.maxUses}
-                  </span>
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleCopy(inv.code)} title="Copy">
-                    {copied === inv.code ? <CheckCircle size={14} style={{ color: 'var(--color-success)' }} /> : <Copy size={14} />}
-                  </button>
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeactivate(inv.code)} title="Deactivate" style={{ color: 'var(--color-danger)' }}>
-                    <Trash2 size={14} />
-                  </button>
+                <div key={inv.code} className="invite-list-item">
+                  <div className="invite-code-row">
+                    <code className="invite-code-text">{inv.code}</code>
+                    <span className={`badge ${ROLE_LABELS[inv.role].toLowerCase()}`}>{ROLE_LABELS[inv.role]}</span>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                      {inv.usedCount}/{inv.maxUses}
+                    </span>
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowQR(inv.code === showQR ? null : inv.code)} title="QR Code">
+                        <QrCode size={14} />
+                      </button>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleCopy(inv.code)} title="Copy Link">
+                        {copied === inv.code ? <CheckCircle size={14} style={{ color: 'var(--color-success)' }} /> : <Copy size={14} />}
+                      </button>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeactivate(inv.code)} title="Deactivate" style={{ color: 'var(--color-danger)' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {showQR === inv.code && (
+                    <div className="qr-container animate-fade-in" style={{ padding: 'var(--space-md)', background: 'white', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'center', marginTop: 'var(--space-sm)' }}>
+                      <QRCodeSVG 
+                        value={`${window.location.origin}/join?code=${inv.code}`} 
+                        size={160}
+                        includeMargin={true}
+                        level="H"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

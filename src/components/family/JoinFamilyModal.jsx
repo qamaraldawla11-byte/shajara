@@ -2,17 +2,29 @@
 // Join Family Modal — Via invite code
 // ============================================
 
-import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import { joinFamily } from '../../services/inviteService';
+import { reportError, getErrorMessage } from '../../services/errorService';
+import { useToast } from '../../contexts/ToastContext';
 import { X, UserPlus, CheckCircle } from 'lucide-react';
 
-export default function JoinFamilyModal({ onClose, onJoined }) {
-  const { user } = useAuth();
-  const [code, setCode] = useState('');
+export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' }) {
+  const toast = useToast();
+  const [code, setCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    if (initialCode) {
+      setCode(initialCode);
+      if (initialCode.trim()) {
+        setTimeout(() => {
+          document.getElementById('join-family-submit')?.click();
+        }, 300);
+      }
+    }
+  }, [initialCode]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -25,11 +37,15 @@ export default function JoinFamilyModal({ onClose, onJoined }) {
     setError('');
 
     try {
-      const result = await joinFamily(code.trim(), user.uid);
+      const result = await joinFamily(code.trim());
       setSuccess(result);
-      onJoined();
+      await onJoined();
+      toast.success(`Joined ${result.familyName}.`);
     } catch (err) {
-      setError(err.message || 'Failed to join family.');
+      reportError(err, 'Join family');
+      const message = getErrorMessage(err, 'Failed to join family.');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

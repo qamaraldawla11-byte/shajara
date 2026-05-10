@@ -3,12 +3,13 @@
 // ============================================
 
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { createFamily } from '../../services/familyService';
+import { reportError, getErrorMessage } from '../../services/errorService';
+import { useToast } from '../../contexts/ToastContext';
 import { X } from 'lucide-react';
 
 export default function CreateFamilyModal({ onClose, onCreated }) {
-  const { user } = useAuth();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,12 +26,15 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
     setError('');
 
     try {
-      await createFamily(name.trim(), description.trim(), user.uid);
-      onCreated();
+      await createFamily(name.trim(), description.trim());
+      await onCreated();
+      toast.success('Family created.');
       onClose();
     } catch (err) {
-      setError('Failed to create family. Please try again.');
-      console.error(err);
+      reportError(err, 'Create family');
+      const message = getErrorMessage(err, 'Failed to create family. Please try again.');
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

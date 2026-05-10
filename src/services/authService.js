@@ -1,57 +1,56 @@
 // ============================================
-// Auth Service — Firebase Authentication
+// Auth Service - Supabase Authentication
 // ============================================
 
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, googleProvider, db } from './firebase';
+import { supabase } from './supabaseClient';
 
 /**
- * Sign in with Google and create/update user document
+ * Sign in with Google OAuth via Supabase.
  */
 export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const user = result.user;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/dashboard',
+    },
+  });
 
-  // Create or update user document in Firestore
-  const userRef = doc(db, 'users', user.uid);
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) {
-    // New user — create document
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      families: [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    // Existing user — update last login info
-    await setDoc(userRef, {
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  }
-
-  return user;
+  if (error) throw error;
+  return data;
 }
 
 /**
- * Sign out current user
+ * Sign out current user.
  */
 export async function logOut() {
-  await signOut(auth);
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 /**
- * Get user document from Firestore
+ * Create or update the authenticated user's profile through an RPC.
+ */
+export async function ensureUserProfile(user) {
+  const { data, error } = await supabase.rpc('ensure_profile', {
+    p_email: user.email,
+    p_display_name: user.user_metadata?.full_name || user.email,
+    p_photo_url: user.user_metadata?.avatar_url || null,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Get user profile from profiles table.
  */
 export async function getUserDoc(uid) {
-  const userRef = doc(db, 'users', uid);
-  const userSnap = await getDoc(userRef);
-  return userSnap.exists() ? { id: userSnap.id, ...userSnap.data() } : null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, display_name, photo_url, created_at, updated_at')
+    .eq('id', uid)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
 }

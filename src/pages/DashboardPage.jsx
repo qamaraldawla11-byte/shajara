@@ -6,52 +6,56 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserFamilies } from '../services/familyService';
+import { reportError } from '../services/errorService';
+import { useToast } from '../contexts/ToastContext';
 import FamilyCard from '../components/family/FamilyCard';
 import CreateFamilyModal from '../components/family/CreateFamilyModal';
 import JoinFamilyModal from '../components/family/JoinFamilyModal';
+import ActivityWidget from '../components/dashboard/ActivityWidget';
 import { Plus, UserPlus, TreePine, Users, FolderTree } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
-  const { user, userDoc } = useAuth();
+  const { user, userDoc, refreshUserDoc } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [families, setFamilies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
 
   useEffect(() => {
-    loadFamilies();
-  }, [userDoc]);
+    let isMounted = true;
+    loadFamilies(isMounted);
+    return () => { isMounted = false; };
+  }, [user?.id, userDoc?.updated_at]);
 
-  async function loadFamilies() {
-    if (user?.isDev) {
-      setFamilies([
-        {
-          id: 'dev-family-1',
-          name: 'The Al-Farsi Family',
-          description: 'A mock family tree for development purposes.',
-          memberCount: 12,
-          createdAt: new Date()
-        }
-      ]);
-      setLoading(false);
-      return;
-    }
-
-    if (!userDoc?.families?.length) {
-      setFamilies([]);
-      setLoading(false);
+  async function loadFamilies(isMounted = true) {
+    if (!user) {
+      if (isMounted) {
+        setFamilies([]);
+        setLoading(false);
+      }
       return;
     }
 
     try {
-      const data = await getUserFamilies(userDoc.families);
-      setFamilies(data);
+      const data = await getUserFamilies();
+      if (isMounted) setFamilies(data);
     } catch (err) {
-      console.error('Failed to load families:', err);
+      reportError(err, 'Load dashboard families');
+      toast.error('Failed to load families.');
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
+  }
+
+  async function handleFamilyChange() {
+    if (refreshUserDoc) {
+      await refreshUserDoc();
+    }
+    await loadFamilies();
   }
 
   const totalMembers = families.reduce((sum, f) => sum + (f.memberCount || 0), 0);
@@ -61,9 +65,9 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title">{t('common.dashboard')}</h1>
           <p className="page-subtitle">
-            Welcome back, {user?.displayName?.split(' ')[0] || 'there'}
+            {t('dashboard.welcome', { name: userDoc?.display_name?.split(' ')[0] || user?.user_metadata?.full_name?.split(' ')[0] || 'there' })}
           </p>
         </div>
         <div className="page-actions">
@@ -73,7 +77,7 @@ export default function DashboardPage() {
             id="join-family-btn"
           >
             <UserPlus size={18} />
-            Join Family
+            {t('dashboard.join_family')}
           </button>
           <button
             className="btn btn-primary"
@@ -81,7 +85,7 @@ export default function DashboardPage() {
             id="create-family-btn"
           >
             <Plus size={18} />
-            Create Family
+            {t('dashboard.create_family')}
           </button>
         </div>
       </div>
@@ -93,66 +97,74 @@ export default function DashboardPage() {
             <FolderTree size={24} />
           </div>
           <div className="stat-value">{families.length}</div>
-          <div className="stat-label">Families</div>
+          <div className="stat-label">{t('dashboard.families')}</div>
         </div>
         <div className="card stat-card">
           <div className="stat-icon" style={{ color: 'var(--color-accent)' }}>
             <Users size={24} />
           </div>
           <div className="stat-value">{totalMembers}</div>
-          <div className="stat-label">Total Members</div>
+          <div className="stat-label">{t('dashboard.total_members')}</div>
         </div>
         <div className="card stat-card">
           <div className="stat-icon" style={{ color: 'var(--color-warning)' }}>
             <TreePine size={24} />
           </div>
           <div className="stat-value">{families.length}</div>
-          <div className="stat-label">Trees</div>
+          <div className="stat-label">{t('dashboard.trees')}</div>
         </div>
       </div>
 
-      {/* Family list */}
-      {loading ? (
-        <div className="loading-screen" style={{ height: '40vh' }}>
-          <div className="spinner"></div>
+      <div className="dashboard-grid">
+        <div className="dashboard-main">
+          {/* Family list */}
+          {loading ? (
+            <div className="loading-screen" style={{ height: '40vh' }}>
+              <div className="spinner"></div>
+            </div>
+          ) : families.length === 0 ? (
+            <div className="card empty-state">
+              <TreePine size={64} className="empty-state-icon" />
+              <h3>{t('dashboard.no_families')}</h3>
+              <p>Create your first family tree or join an existing one with an invite code.</p>
+              <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                  <Plus size={18} /> {t('dashboard.create_family')}
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
+                  <UserPlus size={18} /> {t('dashboard.join_family')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-2">
+              {families.map((family) => (
+                <FamilyCard
+                  key={family.id}
+                  family={family}
+                  onClick={() => navigate(`/family/${family.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : families.length === 0 ? (
-        <div className="card empty-state">
-          <TreePine size={64} className="empty-state-icon" />
-          <h3>No families yet</h3>
-          <p>Create your first family tree or join an existing one with an invite code.</p>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-            <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-              <Plus size={18} /> Create Family
-            </button>
-            <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
-              <UserPlus size={18} /> Join Family
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-2">
-          {families.map((family) => (
-            <FamilyCard
-              key={family.id}
-              family={family}
-              onClick={() => navigate(`/family/${family.id}`)}
-            />
-          ))}
-        </div>
-      )}
+
+        <aside className="dashboard-sidebar">
+          <ActivityWidget families={families} />
+        </aside>
+      </div>
 
       {/* Modals */}
       {showCreate && (
         <CreateFamilyModal
           onClose={() => setShowCreate(false)}
-          onCreated={loadFamilies}
+          onCreated={handleFamilyChange}
         />
       )}
       {showJoin && (
         <JoinFamilyModal
           onClose={() => setShowJoin(false)}
-          onJoined={loadFamilies}
+          onJoined={handleFamilyChange}
         />
       )}
     </div>

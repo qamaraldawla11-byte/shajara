@@ -1,24 +1,34 @@
-// ============================================
-// Tree Page — Full-page family tree view
-// ============================================
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getFamilyById, getUserRole } from '../services/familyService';
 import { getMembers } from '../services/memberService';
+import { reportError } from '../services/errorService';
+import { useToast } from '../contexts/ToastContext';
 import FamilyTree from '../components/tree/FamilyTree';
+import AdvancedTree from '../components/tree/AdvancedTree';
 import { getTreeStats } from '../utils/treeBuilder';
-import { ArrowLeft, Users, GitBranch, Heart } from 'lucide-react';
+import { ArrowLeft, Users, GitBranch, Heart, Layout, Maximize2, Printer } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useReactToPrint } from 'react-to-print';
 
 export default function TreePage() {
   const { familyId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const treeRef = useRef();
 
   const [family, setFamily] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('classic'); // 'classic' or 'advanced'
+
+  const handlePrint = useReactToPrint({
+    contentRef: treeRef,
+    documentTitle: `${family?.name || 'Family'} - Family Tree`,
+  });
 
   useEffect(() => {
     loadData();
@@ -28,7 +38,7 @@ export default function TreePage() {
     try {
       const [familyData, userRole, membersData] = await Promise.all([
         getFamilyById(familyId),
-        getUserRole(familyId, user.uid),
+        getUserRole(familyId, user.id),
         getMembers(familyId),
       ]);
 
@@ -40,7 +50,8 @@ export default function TreePage() {
       setFamily(familyData);
       setMembers(membersData);
     } catch (err) {
-      console.error('Failed to load tree data:', err);
+      reportError(err, 'Load tree');
+      toast.error('Failed to load tree.');
       navigate('/dashboard', { replace: true });
     } finally {
       setLoading(false);
@@ -70,44 +81,77 @@ export default function TreePage() {
           </button>
           <div>
             <h1 className="page-title" style={{ fontSize: 'var(--font-size-xl)' }}>
-              {family?.name} — Family Tree
+              {family?.name} — {t('common.tree')}
             </h1>
           </div>
         </div>
-        <div className="tree-stats">
-          <div className="tree-stat-pill">
-            <Users size={14} />
-            {stats.total} members
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
+          <div className="tree-stats">
+            <div className="tree-stat-pill">
+              <Users size={14} />
+              {stats.total} {t('tree.members')}
+            </div>
+            <div className="tree-stat-pill">
+              <GitBranch size={14} />
+              {stats.generations} {t('tree.generations')}
+            </div>
+            <div className="tree-stat-pill">
+              <Heart size={14} />
+              {stats.alive} {t('tree.alive')}
+            </div>
           </div>
-          <div className="tree-stat-pill">
-            <GitBranch size={14} />
-            {stats.generations} generations
-          </div>
-          <div className="tree-stat-pill">
-            <Heart size={14} />
-            {stats.alive} alive
+
+          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+            <button className="btn btn-secondary btn-icon" onClick={() => handlePrint()} title="Print PDF">
+              <Printer size={18} />
+            </button>
+
+            <div className="view-toggle">
+              <button 
+                className={`toggle-btn ${viewMode === 'classic' ? 'active' : ''}`}
+                onClick={() => setViewMode('classic')}
+                title="Classic View"
+              >
+                <Layout size={18} />
+              </button>
+              <button 
+                className={`toggle-btn ${viewMode === 'advanced' ? 'active' : ''}`}
+                onClick={() => setViewMode('advanced')}
+                title="Advanced View"
+              >
+                <Maximize2 size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tree */}
-      <div className="tree-container">
-        {members.length === 0 ? (
-          <div className="empty-state" style={{ padding: 'var(--space-3xl)' }}>
-            <GitBranch size={64} className="empty-state-icon" />
-            <h3>No members to display</h3>
-            <p>Add family members to see the tree visualization.</p>
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate(`/family/${familyId}`)}
-            >
-              Go to Members
-            </button>
-          </div>
-        ) : (
-          <FamilyTree members={members} />
-        )}
+      <div className="tree-container" style={{ padding: viewMode === 'advanced' ? '0' : 'var(--space-2xl)' }}>
+        <div ref={treeRef} className="print-area">
+          {members.length === 0 ? (
+            <div className="empty-state" style={{ padding: 'var(--space-3xl)' }}>
+              <GitBranch size={64} className="empty-state-icon" />
+              <h3>{t('tree.no_members')}</h3>
+              <p>Add family members to see the tree visualization.</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate(`/family/${familyId}`)}
+              >
+                Go to Members
+              </button>
+            </div>
+          ) : (
+            viewMode === 'classic' ? (
+              <FamilyTree members={members} />
+            ) : (
+              <AdvancedTree members={members} />
+            )
+          )}
+        </div>
       </div>
     </div>
   );
 }
+

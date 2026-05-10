@@ -1,159 +1,118 @@
 // ============================================
-// Family Service — Firestore CRUD for families
+// Family Service - Supabase CRUD for families
 // ============================================
 
-import {
-  doc,
-  collection,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  setDoc,
-  arrayUnion,
-  arrayRemove,
-  serverTimestamp,
-  query,
-  where,
-  increment,
-} from 'firebase/firestore';
-import { db } from './firebase';
-import { ROLES } from '../utils/constants';
+import { supabase } from './supabaseClient';
 
 /**
- * Create a new family and set the creator as admin
+ * Create a new family and assign the current user as admin atomically.
  */
-export async function createFamily(name, description, userId) {
-  // 1. Create the family document
-  const familyRef = await addDoc(collection(db, 'families'), {
-    name,
-    description: description || '',
-    createdBy: userId,
-    memberCount: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+export async function createFamily(name, description) {
+  const { data, error } = await supabase.rpc('create_family_transaction', {
+    p_name: name,
+    p_description: description || '',
   });
 
-  // 2. Set the creator as admin in the roles subcollection
-  await setDoc(doc(db, 'families', familyRef.id, 'roles', userId), {
-    role: ROLES.ADMIN,
-    joinedAt: serverTimestamp(),
-  });
-
-  // 3. Add familyId to the user's families array
-  const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    families: arrayUnion(familyRef.id),
-    updatedAt: serverTimestamp(),
-  });
-
-  return familyRef.id;
+  if (error) throw error;
+  return data;
 }
 
 /**
- * Get a single family by ID
+ * Get a single family by ID.
  */
 export async function getFamilyById(familyId) {
-  const familyRef = doc(db, 'families', familyId);
-  const familySnap = await getDoc(familyRef);
-  if (!familySnap.exists()) return null;
-  return { id: familySnap.id, ...familySnap.data() };
+  const { data, error } = await supabase
+    .from('families')
+    .select('*')
+    .eq('id', familyId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data ? mapFamilyFromDb(data) : null;
 }
 
 /**
- * Get all families for a user (by their families array)
+ * Get all families for the authenticated user from family_roles.
  */
-export async function getUserFamilies(familyIds) {
-  if (!familyIds || familyIds.length === 0) return [];
+export async function getUserFamilies() {
+  const { data, error } = await supabase.rpc('get_my_families');
 
-  const families = [];
-  for (const id of familyIds) {
-    const family = await getFamilyById(id);
-    if (family) families.push(family);
-  }
-  return families;
+  if (error) throw error;
+  return (data || []).map(mapFamilyFromDb);
 }
 
 /**
- * Get user's role in a family
+ * Get user's role in a family.
  */
 export async function getUserRole(familyId, userId) {
-  const roleRef = doc(db, 'families', familyId, 'roles', userId);
-  const roleSnap = await getDoc(roleRef);
-  if (!roleSnap.exists()) return null;
-  return roleSnap.data().role;
+  const { data, error } = await supabase
+    .from('family_roles')
+    .select('role')
+    .eq('family_id', familyId)
+    .eq('user_id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data?.role || null;
 }
 
 /**
- * Get all roles (members with access) for a family
+ * Get all roles (members with access) for a family.
  */
 export async function getFamilyRoles(familyId) {
-  const rolesRef = collection(db, 'families', familyId, 'roles');
-  const rolesSnap = await getDocs(rolesRef);
-  return rolesSnap.docs.map((d) => ({ userId: d.id, ...d.data() }));
+  const { data, error } = await supabase
+    .from('family_roles')
+    .select('*')
+    .eq('family_id', familyId);
+
+  if (error) throw error;
+  return (data || []).map((d) => ({ userId: d.user_id, role: d.role, joinedAt: d.joined_at }));
 }
 
 /**
- * Update a user's role in a family
+ * Update a user's role in a family.
  */
 export async function updateUserRole(familyId, userId, newRole) {
-  const roleRef = doc(db, 'families', familyId, 'roles', userId);
-  await updateDoc(roleRef, { role: newRole });
+  const { error } = await supabase.rpc('update_user_role_transaction', {
+    p_family_id: familyId,
+    p_user_id: userId,
+    p_new_role: newRole,
+  });
+
+  if (error) throw error;
 }
 
 /**
- * Remove a user from a family
+ * Remove a user from a family atomically.
  */
 export async function removeUserFromFamily(familyId, userId) {
-  // Remove role
-  await deleteDoc(doc(db, 'families', familyId, 'roles', userId));
-
-  // Remove from user's families array
-  const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    families: arrayRemove(familyId),
-    updatedAt: serverTimestamp(),
+  const { error } = await supabase.rpc('remove_user_from_family_transaction', {
+    p_family_id: familyId,
+    p_user_id: userId,
   });
+
+  if (error) throw error;
 }
 
 /**
- * Delete a family entirely
+ * Delete a family atomically.
  */
-export async function deleteFamily(familyId, userId) {
-  // Delete all members in subcollection
-  const membersSnap = await getDocs(collection(db, 'families', familyId, 'members'));
-  for (const memberDoc of membersSnap.docs) {
-    await deleteDoc(memberDoc.ref);
-  }
+export async function deleteFamily(familyId) {
+  const { error } = await supabase.rpc('delete_family_transaction', {
+    p_family_id: familyId,
+  });
 
-  // Delete all roles in subcollection
-  const rolesSnap = await getDocs(collection(db, 'families', familyId, 'roles'));
-  const userIds = rolesSnap.docs.map((d) => d.id);
-  for (const roleDoc of rolesSnap.docs) {
-    await deleteDoc(roleDoc.ref);
-  }
-
-  // Remove family from all users' families arrays
-  for (const uid of userIds) {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, {
-      families: arrayRemove(familyId),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  // Delete the family document
-  await deleteDoc(doc(db, 'families', familyId));
+  if (error) throw error;
 }
 
-/**
- * Increment or decrement the member count
- */
-export async function updateMemberCount(familyId, delta) {
-  const familyRef = doc(db, 'families', familyId);
-  await updateDoc(familyRef, {
-    memberCount: increment(delta),
-    updatedAt: serverTimestamp(),
-  });
+function mapFamilyFromDb(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    createdBy: row.created_by,
+    memberCount: row.member_count,
+    createdAt: row.created_at ? new Date(row.created_at) : null,
+    updatedAt: row.updated_at ? new Date(row.updated_at) : null,
+  };
 }

@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { updateMember } from '../../services/memberService';
 import { X } from 'lucide-react';
+import { reportError, getErrorMessage } from '../../services/errorService';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function EditMemberModal({ familyId, member, members, onClose, onUpdated }) {
+  const toast = useToast();
   const [form, setForm] = useState({
     firstName: member.firstName || '', lastName: member.lastName || '',
     gender: member.gender || 'male', birthDate: member.birthDate || '',
@@ -35,8 +38,15 @@ export default function EditMemberModal({ familyId, member, members, onClose, on
           spouseIds: form.spouseIds,
         },
       });
-      onUpdated(); onClose();
-    } catch (err) { setError('Failed to update member.'); console.error(err); }
+      await onUpdated();
+      toast.success('Member updated.');
+      onClose();
+    } catch (err) {
+      reportError(err, 'Update member');
+      const message = getErrorMessage(err, 'Failed to update member.');
+      setError(message);
+      toast.error(message);
+    }
     finally { setLoading(false); }
   }
 

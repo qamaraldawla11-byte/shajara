@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { addMember } from '../../services/memberService';
 import { X } from 'lucide-react';
+import { reportError, getErrorMessage } from '../../services/errorService';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function AddMemberModal({ familyId, members, onClose, onAdded }) {
-  const { user } = useAuth();
+  const toast = useToast();
   const [form, setForm] = useState({
     firstName: '', lastName: '', gender: 'male',
     birthDate: '', deathDate: '', isAlive: true,
@@ -29,9 +30,16 @@ export default function AddMemberModal({ familyId, members, onClose, onAdded }) 
         deathDate: form.isAlive ? null : form.deathDate || null,
         isAlive: form.isAlive, fatherId: form.fatherId || null,
         motherId: form.motherId || null, spouseIds: form.spouseIds,
-      }, user.uid);
-      onAdded(); onClose();
-    } catch (err) { setError('Failed to add member.'); console.error(err); }
+      });
+      await onAdded();
+      toast.success('Member added.');
+      onClose();
+    } catch (err) {
+      reportError(err, 'Add member');
+      const message = getErrorMessage(err, 'Failed to add member.');
+      setError(message);
+      toast.error(message);
+    }
     finally { setLoading(false); }
   }
 

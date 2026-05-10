@@ -1,0 +1,40 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "family": "Family",
+    "tree": "Tree",
+    "chat": "Chat",
+    "settings": "Settings",
+    "logout": "Logout",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "notifications": "Notifications",
+    "profile": "Profile"
+  },
+  "dashboard": {
+    "welcome": "Welcome back, {{name}}",
+    "total_members": "Total Members",
+    "families": "Families",
+    "trees": "Trees",
+    "no_families": "No families yet",
+    "create_family": "Create Family",
+    "join_family": "Join Family"
+  },
+  "tree": {
+    "members": "members",
+    "generations": "generations",
+    "alive": "alive",
+    "no_members": "No members to display"
+  },
+  "chat": {
+    "title": "Family Chat",
+    "type_message": "Type a message...",
+    "no_messages": "No messages yet",
+    "online": "Online",
+    "offline": "Offline"
+  }
+}

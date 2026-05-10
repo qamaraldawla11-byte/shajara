@@ -6,9 +6,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, TreePine, Users, Shield, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { reportError } from '../services/errorService';
+import { useToast } from '../contexts/ToastContext';
 
 export default function LoginPage() {
-  const { login, devLogin, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState('');
@@ -24,10 +27,11 @@ export default function LoginPage() {
     setError('');
     try {
       await login();
-      navigate('/dashboard', { replace: true });
+      // OAuth redirects the browser, so we don't need to navigate here
     } catch (err) {
       setError('Failed to sign in. Please try again.');
-      console.error(err);
+      reportError(err, 'Login page');
+      toast.error('Failed to sign in. Please try again.');
     } finally {
       setSigningIn(false);
     }
@@ -148,16 +152,7 @@ export default function LoginPage() {
               {signingIn ? 'Signing in...' : 'Continue with Google'}
             </button>
 
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                devLogin();
-                navigate('/dashboard', { replace: true });
-              }}
-              style={{ width: '100%', marginTop: 'var(--space-md)' }}
-            >
-              Dev Mode (Bypass Login)
-            </button>
+
 
             <p className="login-terms">
               By signing in, you agree to our Terms of Service and Privacy Policy.

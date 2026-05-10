@@ -5,8 +5,8 @@
 import { Users, Calendar, ChevronRight } from 'lucide-react';
 
 export default function FamilyCard({ family, onClick }) {
-  const createdDate = family.createdAt?.toDate
-    ? family.createdAt.toDate().toLocaleDateString('en-US', {
+  const createdDate = family.createdAt instanceof Date
+    ? family.createdAt.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

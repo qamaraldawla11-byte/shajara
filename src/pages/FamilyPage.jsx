@@ -7,6 +7,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getFamilyById, getUserRole, deleteFamily } from '../services/familyService';
 import { getMembers, deleteMember } from '../services/memberService';
+import { reportError, getErrorMessage } from '../services/errorService';
+import { useToast } from '../contexts/ToastContext';
 import AddMemberModal from '../components/members/AddMemberModal';
 import EditMemberModal from '../components/members/EditMemberModal';
 import MemberCard from '../components/members/MemberCard';
@@ -18,13 +20,13 @@ import {
   TreePine,
   Users,
   Trash2,
-  Settings,
   Share2,
 } from 'lucide-react';
 
 export default function FamilyPage() {
   const { familyId } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
 
   const [family, setFamily] = useState(null);
@@ -34,20 +36,23 @@ export default function FamilyPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [showInvites, setShowInvites] = useState(false);
-  const [activeTab, setActiveTab] = useState('members');
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    loadFamily();
+    let isMounted = true;
+    loadFamily(isMounted);
+    return () => { isMounted = false; };
   }, [familyId]);
 
-  async function loadFamily() {
+  async function loadFamily(isMounted = true) {
     try {
       const [familyData, userRole, membersData] = await Promise.all([
         getFamilyById(familyId),
-        getUserRole(familyId, user.uid),
+        getUserRole(familyId, user.id),
         getMembers(familyId),
       ]);
+
+      if (!isMounted) return;
 
       if (!familyData || !userRole) {
         navigate('/dashboard', { replace: true });
@@ -58,10 +63,11 @@ export default function FamilyPage() {
       setRole(userRole);
       setMembers(membersData);
     } catch (err) {
-      console.error('Failed to load family:', err);
-      navigate('/dashboard', { replace: true });
+      reportError(err, 'Load family');
+      toast.error('Failed to load family.');
+      if (isMounted) navigate('/dashboard', { replace: true });
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   }
 
@@ -70,8 +76,10 @@ export default function FamilyPage() {
     try {
       await deleteMember(familyId, memberId);
       await loadFamily();
+      toast.success('Member deleted.');
     } catch (err) {
-      console.error('Failed to delete member:', err);
+      reportError(err, 'Delete member');
+      toast.error(getErrorMessage(err, 'Failed to delete member.'));
     }
   }
 
@@ -79,10 +87,12 @@ export default function FamilyPage() {
     if (!confirm(`Are you sure you want to delete "${family.name}"? ALL data will be lost. This cannot be undone.`)) return;
     setDeleting(true);
     try {
-      await deleteFamily(familyId, user.uid);
+      await deleteFamily(familyId);
+      toast.success('Family deleted.');
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      console.error('Failed to delete family:', err);
+      reportError(err, 'Delete family');
+      toast.error(getErrorMessage(err, 'Failed to delete family.'));
       setDeleting(false);
     }
   }
