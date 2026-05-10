@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { TreePine, LayoutDashboard, LogOut, Users, MessageSquare, ChevronDown, Menu, X as CloseIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { reportError } from '../../services/errorService';
 export default function AppLayout() {
   const { user, userDoc, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const [families, setFamilies] = useState([]);
   const [showFamilies, setShowFamilies] = useState(true);
@@ -21,6 +22,10 @@ export default function AppLayout() {
       setFamilies([]);
     }
   }, [user?.id, userDoc?.updated_at]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   async function loadFamilies() {
     try {
@@ -50,6 +55,14 @@ export default function AppLayout() {
       </div>
 
       {/* Sidebar / Drawer */}
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-brand desktop-only">
           <TreePine size={28} />

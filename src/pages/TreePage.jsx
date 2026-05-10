@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getFamilyById, getUserRole } from '../services/familyService';
@@ -6,11 +6,12 @@ import { getMembers } from '../services/memberService';
 import { reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 import FamilyTree from '../components/tree/FamilyTree';
-import AdvancedTree from '../components/tree/AdvancedTree';
 import { getTreeStats } from '../utils/treeBuilder';
 import { ArrowLeft, Users, GitBranch, Heart, Layout, Maximize2, Printer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useReactToPrint } from 'react-to-print';
+
+const AdvancedTree = lazy(() => import('../components/tree/AdvancedTree'));
 
 export default function TreePage() {
   const { familyId } = useParams();
@@ -146,7 +147,9 @@ export default function TreePage() {
             viewMode === 'classic' ? (
               <FamilyTree members={members} />
             ) : (
-              <AdvancedTree members={members} />
+              <Suspense fallback={<div className="loading-screen tree-loading"><div className="spinner"></div></div>}>
+                <AdvancedTree members={members} />
+              </Suspense>
             )
           )}
         </div>
@@ -154,4 +157,3 @@ export default function TreePage() {
     </div>
   );
 }
-

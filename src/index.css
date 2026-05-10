@@ -210,6 +210,12 @@ img {
   white-space: nowrap;
   text-decoration: none;
   line-height: 1.4;
+  min-width: 0;
+}
+
+.btn span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn:disabled {
@@ -277,6 +283,7 @@ img {
 .btn-icon {
   padding: 0.5rem;
   border-radius: var(--radius-md);
+  flex: 0 0 auto;
 }
 
 /* ---------- Inputs ---------- */
@@ -363,6 +370,7 @@ img {
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   animation: slideUp var(--transition-base) ease;
+  overscroll-behavior: contain;
 }
 
 .modal-header {
@@ -650,6 +658,7 @@ img {
 .grid {
   display: grid;
   gap: var(--space-lg);
+  min-width: 0;
 }
 
 .grid-2 {
@@ -676,5 +685,23 @@ img {
   .modal {
     max-width: 100%;
     margin: var(--space-md);
+    padding: var(--space-lg);
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -106,13 +106,18 @@ export default function AdvancedTree({ members }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
   const onNodeClick = (event, node) => {
     setSelectedMember(node.data.member);
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex' }}>
-      <div style={{ flex: 1 }}>
+    <div className="advanced-tree-shell">
+      <div className="advanced-tree-canvas">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -138,4 +143,3 @@ export default function AdvancedTree({ members }) {
     </div>
   );
 }
-
