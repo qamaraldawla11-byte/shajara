@@ -22,14 +22,15 @@ export async function createFamily(name, description) {
  * Get a single family by ID.
  */
 export async function getFamilyById(familyId) {
+  if (!familyId) return null;
   const client = requireSupabase();
   const { data, error } = await client
     .from('families')
     .select('*')
     .eq('id', familyId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   return data ? mapFamilyFromDb(data) : null;
 }
 
@@ -40,23 +41,41 @@ export async function getUserFamilies() {
   const client = requireSupabase();
   const { data, error } = await client.rpc('get_my_families');
 
-  if (error) throw error;
-  return (data || []).map(mapFamilyFromDb);
+  if (!error) return (data || []).map(mapFamilyFromDb);
+
+  const { data: fallbackData, error: fallbackError } = await client
+    .from('family_roles')
+    .select('families(*)')
+    .order('joined_at', { ascending: false });
+
+  if (fallbackError) throw error;
+  return (fallbackData || [])
+    .map((row) => row.families)
+    .filter(Boolean)
+    .map(mapFamilyFromDb);
 }
 
 /**
  * Get user's role in a family.
  */
 export async function getUserRole(familyId, userId) {
+  if (!familyId || !userId) return null;
   const client = requireSupabase();
+
+  const { data: roleData, error: roleError } = await client.rpc('current_user_role', {
+    p_family_id: familyId,
+  });
+
+  if (!roleError && roleData) return roleData;
+
   const { data, error } = await client
     .from('family_roles')
     .select('role')
     .eq('family_id', familyId)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw roleError || error;
   return data?.role || null;
 }
 

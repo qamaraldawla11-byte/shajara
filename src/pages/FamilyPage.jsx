@@ -13,7 +13,7 @@ import AddMemberModal from '../components/members/AddMemberModal';
 import EditMemberModal from '../components/members/EditMemberModal';
 import MemberCard from '../components/members/MemberCard';
 import InvitePanel from '../components/invite/InvitePanel';
-import { EmptyState, LoadingState } from '../components/ui/AsyncState';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
 import { hasPermission, ROLE_LABELS, ROLE_COLORS } from '../utils/constants';
 import {
   ArrowLeft,
@@ -38,6 +38,7 @@ export default function FamilyPage() {
   const [editingMember, setEditingMember] = useState(null);
   const [showInvites, setShowInvites] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -46,7 +47,16 @@ export default function FamilyPage() {
   }, [familyId]);
 
   async function loadFamily(isMounted = true) {
+    if (!familyId || !user?.id) {
+      if (isMounted) {
+        setLoadError('Missing family or user session.');
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
+      if (isMounted) setLoadError('');
       const [familyData, userRole, membersData] = await Promise.all([
         getFamilyById(familyId),
         getUserRole(familyId, user.id),
@@ -65,8 +75,10 @@ export default function FamilyPage() {
       setMembers(membersData);
     } catch (err) {
       reportError(err, 'Load family');
-      toast.error('Failed to load family.');
-      if (isMounted) navigate('/dashboard', { replace: true });
+      if (isMounted) {
+        setLoadError(getErrorMessage(err, 'Failed to load family.'));
+        toast.error(getErrorMessage(err, 'Failed to load family.'));
+      }
     } finally {
       if (isMounted) setLoading(false);
     }
@@ -100,6 +112,20 @@ export default function FamilyPage() {
 
   if (loading) {
     return <LoadingState label="Loading family workspace..." />;
+  }
+
+  if (loadError) {
+    return (
+      <ErrorState
+        title="Family could not be loaded"
+        message={loadError}
+        action={(
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard', { replace: true })}>
+            Back to dashboard
+          </button>
+        )}
+      />
+    );
   }
 
   if (!family) return null;

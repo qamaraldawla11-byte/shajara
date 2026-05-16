@@ -32,6 +32,7 @@ export async function addMember(familyId, memberData) {
  * Get all members of a family.
  */
 export async function getMembers(familyId) {
+  if (!familyId) return [];
   const client = requireSupabase();
   const { data, error } = await client
     .from('members')
@@ -47,15 +48,16 @@ export async function getMembers(familyId) {
  * Get a single member by ID.
  */
 export async function getMemberById(familyId, memberId) {
+  if (!familyId || !memberId) return null;
   const client = requireSupabase();
   const { data, error } = await client
     .from('members')
     .select('*')
     .eq('id', memberId)
     .eq('family_id', familyId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') throw error;
+  if (error) throw error;
   if (!data) return null;
   return mapMemberFromDb(data);
 }

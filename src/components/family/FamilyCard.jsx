@@ -2,7 +2,7 @@
 // Family Card — Dashboard family display
 // ============================================
 
-import { Users, Calendar, ChevronRight } from 'lucide-react';
+import { Users, Calendar, ChevronRight, TreePine } from 'lucide-react';
 
 export default function FamilyCard({ family, onClick }) {
   const createdDate = family.createdAt instanceof Date
@@ -31,6 +31,10 @@ export default function FamilyCard({ family, onClick }) {
         <div className="family-card-stat">
           <Users size={14} />
           <span>{family.memberCount || 0} members</span>
+        </div>
+        <div className="family-card-stat">
+          <TreePine size={14} />
+          <span>{family.memberCount ? 'Tree ready' : 'Start tree'}</span>
         </div>
         <div className="family-card-stat">
           <Calendar size={14} />

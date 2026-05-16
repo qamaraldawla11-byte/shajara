@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getChatRooms, getMessages, sendMessage, subscribeToMessages } from '../services/chatService';
 import { Send, Hash, User, Volume2, Image as ImageIcon, MoreVertical, Search, MessageSquare } from 'lucide-react';
@@ -7,7 +7,7 @@ import { reportError, getErrorMessage } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 
 export default function ChatPage() {
-  const { user, userDoc } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const { t } = useTranslation();
   const [rooms, setRooms] = useState([]);
@@ -93,7 +93,7 @@ export default function ChatPage() {
           </div>
           <div className="chat-search">
             <Search size={16} />
-            <input type="text" placeholder="Search chats..." />
+            <input type="text" placeholder="Search chats..." aria-label="Search chats" />
           </div>
           <div className="chat-rooms-list">
             {rooms.map(room => (
@@ -101,6 +101,7 @@ export default function ChatPage() {
                 key={room.id} 
                 className={`chat-room-item ${activeRoom?.id === room.id ? 'active' : ''}`}
                 onClick={() => setActiveRoom(room)}
+                aria-pressed={activeRoom?.id === room.id}
               >
                 <div className="room-icon">
                   {room.type === 'direct' ? <User size={18} /> : <Hash size={18} />}
@@ -124,7 +125,7 @@ export default function ChatPage() {
                   <span className="status-online">{t('chat.online')}</span>
                 </div>
                 <div className="chat-header-actions">
-                  <button className="btn btn-ghost btn-icon"><MoreVertical size={20} /></button>
+                  <button className="btn btn-ghost btn-icon" aria-label="More chat actions"><MoreVertical size={20} /></button>
                 </div>
               </header>
 
@@ -134,7 +135,7 @@ export default function ChatPage() {
                     <p>{t('chat.no_messages')}</p>
                   </div>
                 ) : (
-                  messages.map((msg, i) => (
+                  messages.map((msg) => (
                     <div key={msg.id} className={`message-item ${msg.sender_id === user.id ? 'own' : ''}`}>
                       {msg.sender_id !== user.id && (
                         <div className="message-avatar">
@@ -162,16 +163,17 @@ export default function ChatPage() {
 
               <form className="chat-input-area" onSubmit={handleSendMessage}>
                 <div className="input-actions">
-                  <button type="button" className="btn btn-ghost btn-icon"><ImageIcon size={20} /></button>
-                  <button type="button" className="btn btn-ghost btn-icon"><Volume2 size={20} /></button>
+                  <button type="button" className="btn btn-ghost btn-icon" aria-label="Attach image"><ImageIcon size={20} /></button>
+                  <button type="button" className="btn btn-ghost btn-icon" aria-label="Record voice message"><Volume2 size={20} /></button>
                 </div>
                 <input 
                   type="text" 
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder={t('chat.type_message')} 
+                  aria-label={t('chat.type_message')}
                 />
-                <button type="submit" className="btn btn-primary btn-icon" disabled={!newMessage.trim()}>
+                <button type="submit" className="btn btn-primary btn-icon" disabled={!newMessage.trim()} aria-label="Send message">
                   <Send size={18} />
                 </button>
               </form>

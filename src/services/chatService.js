@@ -60,7 +60,7 @@ export async function sendMessage(roomId, senderId, content, type = 'text') {
  */
 export function subscribeToMessages(roomId, onMessage) {
   const client = requireSupabase();
-  return client
+  const channel = client
     .channel(`room:${roomId}`)
     .on('postgres_changes', { 
       event: 'INSERT', 
@@ -71,6 +71,10 @@ export function subscribeToMessages(roomId, onMessage) {
       onMessage(payload.new);
     })
     .subscribe();
+
+  return {
+    unsubscribe: () => client.removeChannel(channel),
+  };
 }
 
 /**

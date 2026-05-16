@@ -13,7 +13,7 @@ import CreateFamilyModal from '../components/family/CreateFamilyModal';
 import JoinFamilyModal from '../components/family/JoinFamilyModal';
 import ActivityWidget from '../components/dashboard/ActivityWidget';
 import { EmptyState, LoadingState } from '../components/ui/AsyncState';
-import { Plus, UserPlus, TreePine, Users, FolderTree } from 'lucide-react';
+import { Plus, UserPlus, TreePine, Users, FolderTree, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
@@ -118,6 +118,20 @@ export default function DashboardPage() {
 
       <div className="dashboard-grid">
         <div className="dashboard-main">
+          {!loading && families.length > 0 && (
+            <section className="dashboard-guidance" aria-label="Recommended next step">
+              <div>
+                <span className="dashboard-guidance-label">Next best step</span>
+                <h2>Invite one trusted relative to help complete the story.</h2>
+                <p>Families grow faster when one person adds names and another adds memories, photos, and missing relationships.</p>
+              </div>
+              <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
+                <UserPlus size={18} />
+                Join another family
+              </button>
+            </section>
+          )}
+
           {/* Family list */}
           {loading ? (
             <LoadingState label="Loading your families..." />
@@ -152,6 +166,13 @@ export default function DashboardPage() {
 
         <aside className="dashboard-sidebar">
           <ActivityWidget families={families} />
+          <div className="dashboard-trust-card">
+            <ShieldCheck size={22} />
+            <div>
+              <h3>Private by default</h3>
+              <p>Only invited members can access family spaces, trees, and conversations.</p>
+            </div>
+          </div>
         </aside>
       </div>
 

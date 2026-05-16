@@ -30,6 +30,7 @@ The total application code is still comparable, but startup parsing is improved 
 - Added reusable loading states to reduce layout jitter and duplicated markup.
 - Kept production sourcemaps disabled.
 - Reduced decorative login rendering overhead.
+- Added query indexes for dashboard, family, invite, chat, activity, and notification access patterns.
 
 ## Current Bottlenecks
 
@@ -44,4 +45,4 @@ The total application code is still comparable, but startup parsing is improved 
 - Add route-level prefetching for likely next actions after login.
 - Add image resizing and format rules for member photos.
 - Add e2e performance checks for dashboard, family page, and advanced tree page.
-
+- Add Supabase query plan checks for large families before enterprise-scale launch.

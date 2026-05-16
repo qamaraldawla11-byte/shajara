@@ -35,11 +35,16 @@ This pass focused on production readiness without breaking existing business log
 - Added shared async UI primitives in `src/components/ui/AsyncState.jsx`.
 - Reused shared loading and empty states on Login, Dashboard, Family, and Tree pages.
 - Added `requireSupabase()` so service calls fail with a clear configuration error instead of dereferencing a null client.
+- Added safer optional reads with `.maybeSingle()` on family/member/profile fetches.
+- Added fallback paths for profile upsert and family list retrieval when production RPCs are temporarily missing.
+- Added actionable family/tree error states so users are not trapped in failed loading flows.
 - Added Supabase client auth persistence, token auto-refresh, OAuth URL detection, and an app-identifying request header.
 - Split Vite production chunks into React, Supabase, i18n, and tree-rendering bundles.
 - Disabled Vite auto-open for cleaner local and CI behavior.
 - Added keyboard focus-visible styles across links, buttons, inputs, selects, and textareas.
 - Removed unused decorative login background elements and reduced unnecessary visual noise.
+- Added landing onboarding/trust sections and dashboard next-step guidance.
+- Added Supabase query performance indexes in `202605160001_query_performance_hardening.sql`.
 
 ## Security Review
 
@@ -64,3 +69,6 @@ This pass focused on production readiness without breaking existing business log
 - `npm run build`: successful.
 - `npm run lint`: successful with warnings, zero errors.
 
+## Production Readiness Status
+
+The app is production-build ready after this pass. Live Supabase validation still requires applying migrations to the target Supabase project and testing with real auth users.

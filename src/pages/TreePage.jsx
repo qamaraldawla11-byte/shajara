@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getFamilyById, getUserRole } from '../services/familyService';
 import { getMembers } from '../services/memberService';
-import { reportError } from '../services/errorService';
+import { getErrorMessage, reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 import FamilyTree from '../components/tree/FamilyTree';
 import { EmptyState, LoadingState } from '../components/ui/AsyncState';
@@ -25,6 +25,7 @@ export default function TreePage() {
   const [family, setFamily] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [viewMode, setViewMode] = useState('classic'); // 'classic' or 'advanced'
 
   const handlePrint = useReactToPrint({
@@ -37,7 +38,14 @@ export default function TreePage() {
   }, [familyId]);
 
   async function loadData() {
+    if (!familyId || !user?.id) {
+      setLoadError('Missing family or user session.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoadError('');
       const [familyData, userRole, membersData] = await Promise.all([
         getFamilyById(familyId),
         getUserRole(familyId, user.id),
@@ -53,8 +61,9 @@ export default function TreePage() {
       setMembers(membersData);
     } catch (err) {
       reportError(err, 'Load tree');
-      toast.error('Failed to load tree.');
-      navigate('/dashboard', { replace: true });
+      const message = getErrorMessage(err, 'Failed to load tree.');
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -62,6 +71,21 @@ export default function TreePage() {
 
   if (loading) {
     return <LoadingState label="Preparing tree..." />;
+  }
+
+  if (loadError) {
+    return (
+      <EmptyState
+        icon={GitBranch}
+        title="Tree could not be loaded"
+        message={loadError}
+        action={(
+          <button className="btn btn-primary" onClick={() => navigate(`/family/${familyId}`)}>
+            Back to family
+          </button>
+        )}
+      />
+    );
   }
 
   const stats = getTreeStats(members);

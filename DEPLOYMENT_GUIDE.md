@@ -36,6 +36,7 @@ npm run validate
 ## Supabase Deployment Checklist
 
 - Apply SQL schema and migrations in order.
+- Apply `supabase/migrations/202605160001_query_performance_hardening.sql` after the production hardening migration.
 - Confirm Row Level Security is enabled on user-owned family data.
 - Confirm RPC functions validate the authenticated user server-side.
 - Confirm storage bucket policies allow only authorized member photo access.
@@ -72,4 +73,3 @@ Configure all unknown routes to serve `index.html` so protected nested routes su
 - Send and receive a chat message with two accounts.
 - Verify mobile, tablet, and desktop layouts.
 - Run `npm run build` immediately before deployment.
-

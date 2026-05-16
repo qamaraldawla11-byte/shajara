@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import JoinFamilyModal from '../components/family/JoinFamilyModal';
 import { useState } from 'react';
+import { LoadingState } from '../components/ui/AsyncState';
 
 export default function JoinPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -16,7 +17,8 @@ export default function JoinPage() {
     if (authLoading) return;
 
     if (!isAuthenticated) {
-      navigate('/login', { replace: true });
+      const redirect = inviteCode ? `/join?code=${encodeURIComponent(inviteCode)}` : '/dashboard';
+      navigate(`/login?redirect=${encodeURIComponent(redirect)}`, { replace: true });
       return;
     }
 
@@ -28,19 +30,11 @@ export default function JoinPage() {
   }, [isAuthenticated, authLoading, inviteCode]);
 
   if (authLoading || !isAuthenticated) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <LoadingState label="Preparing your invite..." />;
   }
 
   if (!showJoin) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <LoadingState label="Opening invite..." />;
   }
 
   return (
