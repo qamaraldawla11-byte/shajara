@@ -2,27 +2,43 @@
 // Login Page — Landing + Google Sign-In
 // ============================================
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, TreePine, Users, Shield, Share2 } from 'lucide-react';
+import { Eye, EyeOff, Globe2, Lock, LogIn, Mail, Shield, Share2, TreePine, UserRound, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
+import { isSupabaseConfigured } from '../services/supabaseClient';
+import { LoadingState } from '../components/ui/AsyncState';
 
 export default function LoginPage() {
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, loginWithEmail, signupWithEmail, resetPassword, isAuthenticated, loading } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { i18n } = useTranslation();
   const [signingIn, setSigningIn] = useState(false);
+  const [mode, setMode] = useState('login');
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({
+    displayName: '',
+    email: '',
+    password: '',
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate(searchParams.get('redirect') || '/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, searchParams]);
 
-  const handleLogin = async () => {
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language?.startsWith('ar') ? 'en' : 'ar');
+  };
+
+  const handleGoogleLogin = async () => {
     setSigningIn(true);
     setError('');
     try {
@@ -37,21 +53,54 @@ export default function LoginPage() {
     }
   };
 
+  const handleEmailSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    if (!form.email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+
+    if (mode !== 'reset' && form.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (mode === 'signup' && !form.displayName.trim()) {
+      setError('Your name is required.');
+      return;
+    }
+
+    setSigningIn(true);
+
+    try {
+      if (mode === 'signup') {
+        await signupWithEmail(form.email, form.password, form.displayName);
+        toast.success('Account created. Check your email if confirmation is required.');
+      } else if (mode === 'reset') {
+        await resetPassword(form.email);
+        toast.success('Password reset email sent.');
+        setMode('login');
+      } else {
+        await loginWithEmail(form.email, form.password);
+      }
+    } catch (err) {
+      const message = err?.message || 'Authentication failed. Please try again.';
+      setError(message);
+      reportError(err, 'Email auth form');
+      toast.error(message);
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <LoadingState label="Checking your session..." />;
   }
 
   return (
     <div className="login-page">
-      {/* Decorative background orbs */}
-      <div className="login-orb login-orb-1"></div>
-      <div className="login-orb login-orb-2"></div>
-      <div className="login-orb login-orb-3"></div>
-
       <div className="login-container animate-fade-in">
         {/* Left panel — Hero */}
         <div className="login-hero">
@@ -114,17 +163,98 @@ export default function LoginPage() {
         {/* Right panel — Sign In */}
         <div className="login-form-panel">
           <div className="login-form-content">
-            <h2>Welcome</h2>
-            <p>Sign in to start building your family tree</p>
+            <div className="auth-panel-header">
+              <div>
+                <h2>{mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Reset password' : 'Welcome back'}</h2>
+                <p>{mode === 'signup' ? 'Start your private family workspace' : mode === 'reset' ? 'Receive a secure reset link' : 'Sign in to continue to your dashboard'}</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-icon" onClick={toggleLanguage} title="Change language">
+                <Globe2 size={18} />
+              </button>
+            </div>
+
+            {!isSupabaseConfigured && (
+              <div className="login-error">
+                Supabase is not configured for this deployment.
+              </div>
+            )}
 
             {error && (
               <div className="login-error">{error}</div>
             )}
 
+            <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
+              <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Sign in</button>
+              <button type="button" className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Create account</button>
+            </div>
+
+            <form className="auth-form" onSubmit={handleEmailSubmit}>
+              {mode === 'signup' && (
+                <div className="input-group auth-input">
+                  <label htmlFor="display-name">Full name</label>
+                  <UserRound size={17} />
+                  <input
+                    id="display-name"
+                    className="input"
+                    value={form.displayName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                    autoComplete="name"
+                    disabled={signingIn}
+                  />
+                </div>
+              )}
+
+              <div className="input-group auth-input">
+                <label htmlFor="email">Email</label>
+                <Mail size={17} />
+                <input
+                  id="email"
+                  className="input"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                  autoComplete="email"
+                  disabled={signingIn}
+                  required
+                />
+              </div>
+
+              {mode !== 'reset' && (
+                <div className="input-group auth-input">
+                  <label htmlFor="password">Password</label>
+                  <Lock size={17} />
+                  <input
+                    id="password"
+                    className="input"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    disabled={signingIn}
+                    required
+                  />
+                  <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              )}
+
+              <button type="submit" className="btn btn-primary auth-submit" disabled={signingIn || !isSupabaseConfigured}>
+                {signingIn ? <div className="spinner" style={{ width: 18, height: 18 }}></div> : <LogIn size={18} />}
+                {mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}
+              </button>
+            </form>
+
+            <button type="button" className="auth-link-btn" onClick={() => setMode(mode === 'reset' ? 'login' : 'reset')}>
+              {mode === 'reset' ? 'Back to sign in' : 'Forgot your password?'}
+            </button>
+
+            <div className="auth-divider"><span>or</span></div>
+
             <button
               className="btn-google"
-              onClick={handleLogin}
-              disabled={signingIn}
+              onClick={handleGoogleLogin}
+              disabled={signingIn || !isSupabaseConfigured}
               id="google-sign-in-btn"
             >
               {signingIn ? (

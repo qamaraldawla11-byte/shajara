@@ -13,6 +13,7 @@ import AddMemberModal from '../components/members/AddMemberModal';
 import EditMemberModal from '../components/members/EditMemberModal';
 import MemberCard from '../components/members/MemberCard';
 import InvitePanel from '../components/invite/InvitePanel';
+import { EmptyState, LoadingState } from '../components/ui/AsyncState';
 import { hasPermission, ROLE_LABELS, ROLE_COLORS } from '../utils/constants';
 import {
   ArrowLeft,
@@ -98,11 +99,7 @@ export default function FamilyPage() {
   }
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <LoadingState label="Loading family workspace..." />;
   }
 
   if (!family) return null;
@@ -111,16 +108,17 @@ export default function FamilyPage() {
     <div className="family-page animate-fade-in">
       {/* Header */}
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+        <div className="page-title-row">
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => navigate('/dashboard')}
+            aria-label="Back to dashboard"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
             <h1 className="page-title">{family.name}</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <div className="page-meta-row">
               <p className="page-subtitle">{family.description || 'Family tree'}</p>
               <span className={`badge ${ROLE_COLORS[role]}`}>{ROLE_LABELS[role]}</span>
             </div>
@@ -162,10 +160,9 @@ export default function FamilyPage() {
         </div>
         {hasPermission(role, 'deleteFamily') && (
           <button
-            className="btn btn-ghost btn-sm"
             onClick={handleDeleteFamily}
             disabled={deleting}
-            style={{ color: 'var(--color-danger)' }}
+            className="btn btn-ghost btn-sm danger-action"
           >
             <Trash2 size={14} />
             {deleting ? 'Deleting...' : 'Delete Family'}
@@ -175,16 +172,16 @@ export default function FamilyPage() {
 
       {/* Members Grid */}
       {members.length === 0 ? (
-        <div className="card empty-state">
-          <Users size={64} className="empty-state-icon" />
-          <h3>No members yet</h3>
-          <p>Start building your family tree by adding the first member.</p>
-          {hasPermission(role, 'addMember') && (
+        <EmptyState
+          icon={Users}
+          title="No members yet"
+          message="Start building your family tree by adding the first member."
+          action={hasPermission(role, 'addMember') && (
             <button className="btn btn-primary" onClick={() => setShowAddMember(true)}>
               <Plus size={18} /> Add First Member
             </button>
           )}
-        </div>
+        />
       ) : (
         <div className="grid grid-2">
           {members.map((member) => (

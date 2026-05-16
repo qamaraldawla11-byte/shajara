@@ -2,20 +2,21 @@
 // Invite Service - Generate and redeem invite codes
 // ============================================
 
-import { supabase } from './supabaseClient';
+import { requireSupabase } from './supabaseClient';
 import { generateInviteCode, ROLES } from '../utils/constants';
 
 /**
  * Generate an invite code for a family atomically.
  */
 export async function createInvite(familyId, role = ROLES.VIEWER) {
+  const client = requireSupabase();
   let lastError = null;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateInviteCode();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data, error } = await supabase.rpc('create_invite_transaction', {
+    const { data, error } = await client.rpc('create_invite_transaction', {
       p_family_id: familyId,
       p_code: code,
       p_role: role,
@@ -36,7 +37,8 @@ export async function createInvite(familyId, role = ROLES.VIEWER) {
  * Join a family via invite code atomically.
  */
 export async function joinFamily(inviteCode) {
-  const { data, error } = await supabase.rpc('join_family_with_invite', {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('join_family_with_invite', {
     p_code: inviteCode.trim().toUpperCase(),
   });
 
@@ -54,7 +56,8 @@ export async function joinFamily(inviteCode) {
  * Get all invites for a family.
  */
 export async function getFamilyInvites(familyId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('invites')
     .select('*')
     .eq('family_id', familyId)
@@ -80,7 +83,8 @@ export async function getFamilyInvites(familyId) {
  * Deactivate an invite code atomically.
  */
 export async function deactivateInvite(code) {
-  const { error } = await supabase.rpc('deactivate_invite_transaction', {
+  const client = requireSupabase();
+  const { error } = await client.rpc('deactivate_invite_transaction', {
     p_code: code,
   });
 

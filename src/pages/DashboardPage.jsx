@@ -12,6 +12,7 @@ import FamilyCard from '../components/family/FamilyCard';
 import CreateFamilyModal from '../components/family/CreateFamilyModal';
 import JoinFamilyModal from '../components/family/JoinFamilyModal';
 import ActivityWidget from '../components/dashboard/ActivityWidget';
+import { EmptyState, LoadingState } from '../components/ui/AsyncState';
 import { Plus, UserPlus, TreePine, Users, FolderTree } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -91,23 +92,23 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-3" style={{ marginBottom: 'var(--space-xl)' }}>
+      <div className="grid grid-3 stats-grid">
         <div className="card stat-card">
-          <div className="stat-icon" style={{ color: 'var(--color-primary)' }}>
+          <div className="stat-icon stat-icon-primary">
             <FolderTree size={24} />
           </div>
           <div className="stat-value">{families.length}</div>
           <div className="stat-label">{t('dashboard.families')}</div>
         </div>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ color: 'var(--color-accent)' }}>
+          <div className="stat-icon stat-icon-accent">
             <Users size={24} />
           </div>
           <div className="stat-value">{totalMembers}</div>
           <div className="stat-label">{t('dashboard.total_members')}</div>
         </div>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ color: 'var(--color-warning)' }}>
+          <div className="stat-icon stat-icon-warning">
             <TreePine size={24} />
           </div>
           <div className="stat-value">{families.length}</div>
@@ -119,23 +120,23 @@ export default function DashboardPage() {
         <div className="dashboard-main">
           {/* Family list */}
           {loading ? (
-            <div className="loading-screen" style={{ height: '40vh' }}>
-              <div className="spinner"></div>
-            </div>
+            <LoadingState label="Loading your families..." />
           ) : families.length === 0 ? (
-            <div className="card empty-state">
-              <TreePine size={64} className="empty-state-icon" />
-              <h3>{t('dashboard.no_families')}</h3>
-              <p>Create your first family tree or join an existing one with an invite code.</p>
-              <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+            <EmptyState
+              icon={TreePine}
+              title={t('dashboard.no_families')}
+              message="Create your first family tree or join an existing one with an invite code."
+              action={(
+                <div className="empty-state-actions">
                 <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
                   <Plus size={18} /> {t('dashboard.create_family')}
                 </button>
                 <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
                   <UserPlus size={18} /> {t('dashboard.join_family')}
                 </button>
-              </div>
-            </div>
+                </div>
+              )}
+            />
           ) : (
             <div className="grid grid-2">
               {families.map((family) => (

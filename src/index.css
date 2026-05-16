@@ -142,6 +142,15 @@ a:hover {
   color: var(--color-primary-light);
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 3px;
+}
+
 img {
   max-width: 100%;
   display: block;
@@ -185,6 +194,16 @@ img {
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
   transition: all var(--transition-base);
+}
+
+.state-panel {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .card:hover {
@@ -484,6 +503,11 @@ img {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   max-width: 320px;
+}
+
+.error-state .empty-state-icon {
+  color: var(--color-danger);
+  opacity: 0.75;
 }
 
 /* ---------- Animations ---------- */

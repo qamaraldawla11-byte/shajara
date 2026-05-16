@@ -2,13 +2,14 @@
 // Member Service - Supabase CRUD for family members
 // ============================================
 
-import { supabase } from './supabaseClient';
+import { requireSupabase } from './supabaseClient';
 
 /**
  * Add a new member to a family atomically.
  */
 export async function addMember(familyId, memberData) {
-  const { data, error } = await supabase.rpc('add_member_transaction', {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('add_member_transaction', {
     p_family_id: familyId,
     p_first_name: memberData.firstName,
     p_last_name: memberData.lastName || '',
@@ -31,7 +32,8 @@ export async function addMember(familyId, memberData) {
  * Get all members of a family.
  */
 export async function getMembers(familyId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('members')
     .select('*')
     .eq('family_id', familyId)
@@ -45,7 +47,8 @@ export async function getMembers(familyId) {
  * Get a single member by ID.
  */
 export async function getMemberById(familyId, memberId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('members')
     .select('*')
     .eq('id', memberId)
@@ -61,6 +64,7 @@ export async function getMemberById(familyId, memberId) {
  * Update a member.
  */
 export async function updateMember(familyId, memberId, updates) {
+  const client = requireSupabase();
   const dbUpdates = {};
   if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
   if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
@@ -82,7 +86,7 @@ export async function updateMember(familyId, memberId, updates) {
 
   dbUpdates.updated_at = new Date().toISOString();
 
-  const { error } = await supabase
+  const { error } = await client
     .from('members')
     .update(dbUpdates)
     .eq('id', memberId)
@@ -95,7 +99,8 @@ export async function updateMember(familyId, memberId, updates) {
  * Delete a member and clean up relationships atomically.
  */
 export async function deleteMember(familyId, memberId) {
-  const { error } = await supabase.rpc('delete_member_transaction', {
+  const client = requireSupabase();
+  const { error } = await client.rpc('delete_member_transaction', {
     p_family_id: familyId,
     p_member_id: memberId,
   });

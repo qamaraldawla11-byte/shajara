@@ -6,6 +6,7 @@ import { getMembers } from '../services/memberService';
 import { reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 import FamilyTree from '../components/tree/FamilyTree';
+import { EmptyState, LoadingState } from '../components/ui/AsyncState';
 import { getTreeStats } from '../utils/treeBuilder';
 import { ArrowLeft, Users, GitBranch, Heart, Layout, Maximize2, Printer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -60,11 +61,7 @@ export default function TreePage() {
   }
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
-    );
+    return <LoadingState label="Preparing tree..." />;
   }
 
   const stats = getTreeStats(members);
@@ -73,21 +70,22 @@ export default function TreePage() {
     <div className="tree-page animate-fade-in">
       {/* Header */}
       <div className="tree-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+        <div className="tree-title-row">
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => navigate(`/family/${familyId}`)}
+            aria-label="Back to family"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="page-title" style={{ fontSize: 'var(--font-size-xl)' }}>
-              {family?.name} — {t('common.tree')}
+            <h1 className="page-title tree-page-title">
+              {family?.name} - {t('common.tree')}
             </h1>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
+        <div className="tree-toolbar">
           <div className="tree-stats">
             <div className="tree-stat-pill">
               <Users size={14} />
@@ -103,8 +101,8 @@ export default function TreePage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-            <button className="btn btn-secondary btn-icon" onClick={() => handlePrint()} title="Print PDF">
+          <div className="tree-actions">
+            <button className="btn btn-secondary btn-icon" onClick={() => handlePrint()} title="Print PDF" aria-label="Print tree as PDF">
               <Printer size={18} />
             </button>
 
@@ -113,6 +111,8 @@ export default function TreePage() {
                 className={`toggle-btn ${viewMode === 'classic' ? 'active' : ''}`}
                 onClick={() => setViewMode('classic')}
                 title="Classic View"
+                aria-label="Classic tree view"
+                aria-pressed={viewMode === 'classic'}
               >
                 <Layout size={18} />
               </button>
@@ -120,6 +120,8 @@ export default function TreePage() {
                 className={`toggle-btn ${viewMode === 'advanced' ? 'active' : ''}`}
                 onClick={() => setViewMode('advanced')}
                 title="Advanced View"
+                aria-label="Advanced tree view"
+                aria-pressed={viewMode === 'advanced'}
               >
                 <Maximize2 size={18} />
               </button>
@@ -129,20 +131,20 @@ export default function TreePage() {
       </div>
 
       {/* Tree */}
-      <div className="tree-container" style={{ padding: viewMode === 'advanced' ? '0' : 'var(--space-2xl)' }}>
+      <div className={`tree-container ${viewMode === 'advanced' ? 'tree-container-advanced' : ''}`}>
         <div ref={treeRef} className="print-area">
           {members.length === 0 ? (
-            <div className="empty-state" style={{ padding: 'var(--space-3xl)' }}>
-              <GitBranch size={64} className="empty-state-icon" />
-              <h3>{t('tree.no_members')}</h3>
-              <p>Add family members to see the tree visualization.</p>
-              <button
+            <EmptyState
+              icon={GitBranch}
+              title={t('tree.no_members')}
+              message="Add family members to see the tree visualization."
+              action={<button
                 className="btn btn-primary"
                 onClick={() => navigate(`/family/${familyId}`)}
               >
                 Go to Members
-              </button>
-            </div>
+              </button>}
+            />
           ) : (
             viewMode === 'classic' ? (
               <FamilyTree members={members} />

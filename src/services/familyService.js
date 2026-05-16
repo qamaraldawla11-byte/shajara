@@ -2,13 +2,14 @@
 // Family Service - Supabase CRUD for families
 // ============================================
 
-import { supabase } from './supabaseClient';
+import { requireSupabase } from './supabaseClient';
 
 /**
  * Create a new family and assign the current user as admin atomically.
  */
 export async function createFamily(name, description) {
-  const { data, error } = await supabase.rpc('create_family_transaction', {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('create_family_transaction', {
     p_name: name,
     p_description: description || '',
   });
@@ -21,7 +22,8 @@ export async function createFamily(name, description) {
  * Get a single family by ID.
  */
 export async function getFamilyById(familyId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('families')
     .select('*')
     .eq('id', familyId)
@@ -35,7 +37,8 @@ export async function getFamilyById(familyId) {
  * Get all families for the authenticated user from family_roles.
  */
 export async function getUserFamilies() {
-  const { data, error } = await supabase.rpc('get_my_families');
+  const client = requireSupabase();
+  const { data, error } = await client.rpc('get_my_families');
 
   if (error) throw error;
   return (data || []).map(mapFamilyFromDb);
@@ -45,7 +48,8 @@ export async function getUserFamilies() {
  * Get user's role in a family.
  */
 export async function getUserRole(familyId, userId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('family_roles')
     .select('role')
     .eq('family_id', familyId)
@@ -60,7 +64,8 @@ export async function getUserRole(familyId, userId) {
  * Get all roles (members with access) for a family.
  */
 export async function getFamilyRoles(familyId) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('family_roles')
     .select('*')
     .eq('family_id', familyId);
@@ -73,7 +78,8 @@ export async function getFamilyRoles(familyId) {
  * Update a user's role in a family.
  */
 export async function updateUserRole(familyId, userId, newRole) {
-  const { error } = await supabase.rpc('update_user_role_transaction', {
+  const client = requireSupabase();
+  const { error } = await client.rpc('update_user_role_transaction', {
     p_family_id: familyId,
     p_user_id: userId,
     p_new_role: newRole,
@@ -86,7 +92,8 @@ export async function updateUserRole(familyId, userId, newRole) {
  * Remove a user from a family atomically.
  */
 export async function removeUserFromFamily(familyId, userId) {
-  const { error } = await supabase.rpc('remove_user_from_family_transaction', {
+  const client = requireSupabase();
+  const { error } = await client.rpc('remove_user_from_family_transaction', {
     p_family_id: familyId,
     p_user_id: userId,
   });
@@ -98,7 +105,8 @@ export async function removeUserFromFamily(familyId, userId) {
  * Delete a family atomically.
  */
 export async function deleteFamily(familyId) {
-  const { error } = await supabase.rpc('delete_family_transaction', {
+  const client = requireSupabase();
+  const { error } = await client.rpc('delete_family_transaction', {
     p_family_id: familyId,
   });
 
