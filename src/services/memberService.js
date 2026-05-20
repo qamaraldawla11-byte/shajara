@@ -4,6 +4,7 @@
 
 import { requireSupabase } from './supabaseClient';
 import { withTimeout } from '../utils/asyncTimeout';
+import { getDisplayableMemberPhotoUrl, getMemberPhotoStoragePath } from './storageService';
 
 const MEMBER_REQUEST_TIMEOUT_MS = 10000;
 
@@ -33,7 +34,7 @@ export async function addMember(familyId, memberData) {
       p_birth_date: memberData.birthDate || null,
       p_death_date: memberData.deathDate || null,
       p_is_alive: memberData.isAlive !== false,
-      p_photo_url: memberData.photoURL || null,
+      p_photo_url: getMemberPhotoStoragePath(memberData.photoURL) || null,
       p_linked_user_id: memberData.linkedUserId || null,
       p_father_id: memberData.fatherId || null,
       p_mother_id: memberData.motherId || null,
@@ -70,7 +71,7 @@ export async function getMembers(familyId) {
     logMemberSupabaseError('getMembers', error);
     throw error;
   }
-  return (data || []).map(mapMemberFromDb);
+  return Promise.all((data || []).map(mapMemberFromDb));
 }
 
 /**
@@ -110,7 +111,7 @@ export async function updateMember(familyId, memberId, updates) {
   if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
   if (updates.deathDate !== undefined) dbUpdates.death_date = updates.deathDate;
   if (updates.isAlive !== undefined) dbUpdates.is_alive = updates.isAlive;
-  if (updates.photoURL !== undefined) dbUpdates.photo_url = updates.photoURL;
+  if (updates.photoURL !== undefined) dbUpdates.photo_url = getMemberPhotoStoragePath(updates.photoURL) || null;
   if (updates.linkedUserId !== undefined) dbUpdates.linked_user_id = updates.linkedUserId;
   if (updates.fatherId !== undefined) dbUpdates.father_id = updates.fatherId;
   if (updates.motherId !== undefined) dbUpdates.mother_id = updates.motherId;
@@ -160,7 +161,10 @@ export async function deleteMember(familyId, memberId) {
   }
 }
 
-function mapMemberFromDb(row) {
+async function mapMemberFromDb(row) {
+  const photoPath = getMemberPhotoStoragePath(row.photo_url);
+  const photoURL = await getDisplayableMemberPhotoUrl(row.photo_url);
+
   return {
     id: row.id,
     firstName: row.first_name,
@@ -169,7 +173,8 @@ function mapMemberFromDb(row) {
     birthDate: row.birth_date,
     deathDate: row.death_date,
     isAlive: row.is_alive,
-    photoURL: row.photo_url,
+    photoURL,
+    photoPath,
     linkedUserId: row.linked_user_id,
     familyId: row.family_id,
     addedBy: row.added_by,

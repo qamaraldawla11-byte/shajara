@@ -1,4 +1,5 @@
-import { Edit2, Heart, Link as LinkIcon, Trash2, User } from 'lucide-react';
+import { Edit2, Heart, Link as LinkIcon, Trash2 } from 'lucide-react';
+import MemberAvatar from './MemberAvatar';
 
 export default function MemberCard({ member, members, canEdit, canDelete, onEdit, onDelete }) {
   const memberMap = new Map();
@@ -11,19 +12,16 @@ export default function MemberCard({ member, members, canEdit, canDelete, onEdit
     .filter(Boolean);
 
   const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
-  const initials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
 
   return (
     <div className="card member-card" id={`member-${member.id}`}>
       <div className="member-card-header">
         <div className="member-card-avatar-section">
-          {member.photoURL ? (
-            <img src={member.photoURL} alt={fullName} className="avatar avatar-lg member-card-photo" loading="lazy" />
-          ) : (
-            <div className={`avatar avatar-lg avatar-placeholder member-avatar-${member.gender}`}>
-              {initials || <User size={20} />}
-            </div>
-          )}
+          <MemberAvatar
+            member={member}
+            imgClassName="avatar avatar-lg member-card-photo"
+            placeholderClassName={`avatar avatar-lg avatar-placeholder member-avatar-${member.gender}`}
+          />
           <div>
             <h3 className="member-card-name">{fullName}</h3>
             <div className="member-card-meta">

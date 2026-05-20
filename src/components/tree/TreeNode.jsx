@@ -1,20 +1,21 @@
 import { Heart, UserRound, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MemberAvatar from '../members/MemberAvatar';
 
 function PersonCard({ member, relationHint }) {
   const { t } = useTranslation();
   const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
-  const initials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
   const genderLabel = member.gender === 'female' ? t('tree.female') : t('tree.male');
 
   return (
     <div className={`tree-node tree-node-${member.gender} organic-person-node`}>
       <div className="organic-portrait-wrap">
-        {member.photoURL ? (
-          <img src={member.photoURL} alt={fullName} className="tree-node-avatar tree-node-photo" />
-        ) : (
-          <div className="tree-node-avatar">{initials}</div>
-        )}
+        <MemberAvatar
+          member={member}
+          imgClassName="tree-node-avatar tree-node-photo"
+          placeholderClassName="tree-node-avatar"
+          loading="eager"
+        />
       </div>
       <div className="tree-node-name organic-name-ribbon" dir="auto">{fullName}</div>
       <div className="tree-node-meta">

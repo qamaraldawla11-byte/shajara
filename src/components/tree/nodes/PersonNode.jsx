@@ -2,12 +2,12 @@ import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Edit3, Heart, Link as LinkIcon, Plus, Trash2, UserRound, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MemberAvatar from '../../members/MemberAvatar';
 
 const PersonNode = ({ data }) => {
   const { t } = useTranslation();
   const { member, canAdd, canEdit, canDelete, onAddRelative, onEdit, onDelete, isCompactMode, isSelected } = data;
   const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
-  const initials = `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`.toUpperCase();
   const statusLabel = member.isAlive === false ? t('tree.remembered') : t('tree.living');
   const genderLabel = member.gender === 'female' ? t('tree.female') : t('tree.male');
 
@@ -23,11 +23,11 @@ const PersonNode = ({ data }) => {
       <Handle id="spouse-right" type="source" position={Position.Right} className="spouse-handle" />
       
       <div className="organic-portrait-wrap">
-        {member.photoURL ? (
-          <img src={member.photoURL} alt={fullName} className="tree-node-avatar tree-node-photo" loading="lazy" />
-        ) : (
-          <div className="tree-node-avatar">{initials}</div>
-        )}
+        <MemberAvatar
+          member={member}
+          imgClassName="tree-node-avatar tree-node-photo"
+          placeholderClassName="tree-node-avatar"
+        />
       </div>
       <div className="tree-node-content">
         <div className="tree-node-name organic-name-ribbon" dir="auto">{fullName}</div>

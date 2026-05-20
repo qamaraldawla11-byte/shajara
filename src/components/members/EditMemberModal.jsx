@@ -22,6 +22,7 @@ export default function EditMemberModal({ familyId, member, members, onClose, on
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(member.photoURL || '');
+  const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,7 +37,17 @@ export default function EditMemberModal({ familyId, member, members, onClose, on
   function handlePhotoChange(event) {
     const file = event.target.files?.[0] || null;
     setPhotoFile(file);
+    setPhotoPreviewFailed(false);
     setPhotoPreview(file ? URL.createObjectURL(file) : member.photoURL || '');
+  }
+
+  function handlePhotoPreviewError() {
+    console.error('[EditMemberModal] Existing member photo failed to load', {
+      memberId: member.id,
+      photoPath: member.photoPath,
+      photoURL: member.photoURL,
+    });
+    setPhotoPreviewFailed(true);
   }
 
   async function handleSubmit(event) {
@@ -50,22 +61,23 @@ export default function EditMemberModal({ familyId, member, members, onClose, on
     setError('');
 
     try {
-      const photoURL = photoFile ? await uploadMemberPhoto({ familyId, file: photoFile }) : member.photoURL;
-
-      await updateMember(familyId, member.id, {
+      const photoURL = photoFile ? await uploadMemberPhoto({ familyId, file: photoFile }) : null;
+      const updates = {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         gender: form.gender,
         birthDate: form.birthDate || null,
         deathDate: form.isAlive ? null : form.deathDate || null,
         isAlive: form.isAlive,
-        photoURL,
         relationships: {
           fatherId: form.fatherId || null,
           motherId: form.motherId || null,
           spouseIds: form.spouseIds,
         },
-      });
+      };
+      if (photoFile) updates.photoURL = photoURL;
+
+      await updateMember(familyId, member.id, updates);
 
       await onUpdated();
       toast.success(t('member.member_updated'));
@@ -100,7 +112,7 @@ export default function EditMemberModal({ familyId, member, members, onClose, on
 
             <div className="photo-upload-row">
               <div className="member-photo-preview">
-                {photoPreview ? <img src={photoPreview} alt="" /> : <ImagePlus size={24} />}
+                {photoPreview && !photoPreviewFailed ? <img src={photoPreview} alt="" onError={handlePhotoPreviewError} /> : <ImagePlus size={24} />}
               </div>
               <div className="input-group">
                 <label htmlFor="edit-photo">{t('member.profile_image')}</label>

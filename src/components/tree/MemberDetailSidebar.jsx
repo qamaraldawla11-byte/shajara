@@ -1,5 +1,6 @@
 import { X, Calendar, User, Heart, Edit, Plus, Trash2, Baby, Users, Link as LinkIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import MemberAvatar from '../members/MemberAvatar';
 
 export default function MemberDetailSidebar({ member, members, onClose, canAdd, canEdit, canDelete, onAddRelative, onEdit, onDelete }) {
   const { t } = useTranslation();
@@ -25,9 +26,11 @@ export default function MemberDetailSidebar({ member, members, onClose, canAdd, 
 
       <div className="sidebar-content">
         <div className="detail-hero">
-          <div className={`detail-avatar avatar-${member.gender}`}>
-            {member.photoURL ? <img src={member.photoURL} alt={fullName} loading="lazy" /> : `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`}
-          </div>
+          <MemberAvatar
+            member={member}
+            wrapperClassName={`detail-avatar avatar-${member.gender}`}
+            placeholderClassName={`detail-avatar avatar-${member.gender}`}
+          />
           <h4 dir="auto">{fullName}</h4>
           <div className="detail-badges">
             <span className="badge badge-secondary">{member.gender === 'female' ? t('tree.female') : t('tree.male')}</span>
