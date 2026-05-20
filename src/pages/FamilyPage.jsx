@@ -64,7 +64,7 @@ export default function FamilyPage() {
 
     try {
       if (isMounted) setLoadError('');
-      if (isMounted) setLoading(true);
+      if (isMounted && !family) setLoading(true);
       const [familyData, userRole, membersData] = await withTimeout(Promise.all([
         getFamilyById(familyId),
         getUserRole(familyId, user.id),
@@ -99,11 +99,26 @@ export default function FamilyPage() {
     if (!confirm('Are you sure you want to delete this member? This cannot be undone.')) return;
     try {
       await deleteMember(familyId, memberId);
-      await loadFamily();
+      await refreshMembers();
       toast.success('Member deleted.');
     } catch (err) {
       reportError(err, 'Delete member');
       toast.error(getErrorMessage(err, 'Failed to delete member.'));
+    }
+  }
+
+  async function refreshMembers() {
+    try {
+      const membersData = await withTimeout(
+        getMembers(familyId),
+        10000,
+        'Refreshing family members'
+      );
+      setMembers(membersData);
+    } catch (err) {
+      reportError(err, 'Refresh family members after save');
+      console.error('[FamilyPage] Member reload failed after save/delete', err);
+      throw err;
     }
   }
 
@@ -241,7 +256,7 @@ export default function FamilyPage() {
           familyId={familyId}
           members={members}
           onClose={() => setShowAddMember(false)}
-          onAdded={loadFamily}
+          onAdded={refreshMembers}
         />
       )}
 
@@ -251,7 +266,7 @@ export default function FamilyPage() {
           member={editingMember}
           members={members}
           onClose={() => setEditingMember(null)}
-          onUpdated={loadFamily}
+          onUpdated={refreshMembers}
         />
       )}
 

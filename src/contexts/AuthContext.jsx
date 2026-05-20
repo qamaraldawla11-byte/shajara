@@ -2,7 +2,7 @@
 // Auth Context - Global auth state management
 // ============================================
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 import {
   signInWithGoogle,
@@ -39,11 +39,17 @@ export function AuthProvider({ children }) {
   const [userDoc, setUserDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const initializedRef = useRef(false);
+  const userRef = useRef(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function syncSessionUser(sessionUser) {
+    async function syncSessionUser(sessionUser, context = 'Profile synchronization') {
       if (!sessionUser) {
         setUser(null);
         setUserDoc(null);
@@ -55,13 +61,14 @@ export function AuthProvider({ children }) {
         const profile = await withTimeout(
           ensureUserProfile(sessionUser),
           PROFILE_TIMEOUT_MS,
-          'Profile synchronization'
+          context
         );
         if (!isMounted) return;
         setUserDoc(profile || createFallbackProfile(sessionUser));
       } catch (error) {
         if (!isMounted) return;
-        reportError(error, 'Profile synchronization');
+        reportError(error, context);
+        console.error(`[AuthContext] ${context} failed`, error);
         setAuthError(error);
         setUserDoc(createFallbackProfile(sessionUser));
       }
@@ -83,15 +90,19 @@ export function AuthProvider({ children }) {
         );
         if (error) throw error;
         if (!isMounted) return;
-        await syncSessionUser(session?.user || null);
+        await syncSessionUser(session?.user || null, 'Initial profile synchronization');
       } catch (error) {
         if (!isMounted) return;
         reportError(error, 'Auth initialization');
+        console.error('[AuthContext] Auth initialization failed', error);
         setAuthError(error);
         setUser(null);
         setUserDoc(null);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          initializedRef.current = true;
+          setLoading(false);
+        }
       }
     }
 
@@ -104,26 +115,37 @@ export function AuthProvider({ children }) {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!isMounted) return;
-        setLoading(true);
-        setAuthError(null);
 
-        try {
-          if (event === 'SIGNED_OUT') {
-            setUser(null);
-            setUserDoc(null);
-            return;
-          }
-
-          await syncSessionUser(session?.user || null);
-        } catch (error) {
+        window.setTimeout(async () => {
           if (!isMounted) return;
-          reportError(error, 'Auth state change');
-          setAuthError(error);
-        } finally {
-          if (isMounted) setLoading(false);
-        }
+
+          const hasExistingSession = !!userRef.current;
+          const shouldBlockRoute = !initializedRef.current || (event === 'SIGNED_IN' && !hasExistingSession);
+          if (shouldBlockRoute) setLoading(true);
+          setAuthError(null);
+
+          try {
+            if (event === 'SIGNED_OUT') {
+              setUser(null);
+              setUserDoc(null);
+              return;
+            }
+
+            await syncSessionUser(session?.user || null, `Auth ${event.toLowerCase()} profile refresh`);
+          } catch (error) {
+            if (!isMounted) return;
+            reportError(error, 'Auth state change');
+            console.error(`[AuthContext] Auth state change failed (${event})`, error);
+            setAuthError(error);
+          } finally {
+            if (isMounted) {
+              initializedRef.current = true;
+              if (shouldBlockRoute) setLoading(false);
+            }
+          }
+        }, 0);
       }
     );
 
@@ -190,19 +212,24 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const refreshUserDoc = async () => {
+  const refreshUserDoc = useCallback(async () => {
     if (!user) return null;
 
     try {
-      const profile = await getUserDoc(user.id);
+      const profile = await withTimeout(
+        getUserDoc(user.id),
+        PROFILE_TIMEOUT_MS,
+        'Refresh profile'
+      );
       if (profile) setUserDoc(profile);
       return profile;
     } catch (error) {
       reportError(error, 'Refresh profile');
+      console.error('[AuthContext] Profile reload failed', error);
       setAuthError(error);
       return null;
     }
-  };
+  }, [user]);
 
   const value = useMemo(() => ({
     user,
@@ -216,7 +243,7 @@ export function AuthProvider({ children }) {
     logout,
     refreshUserDoc,
     isAuthenticated: !!user,
-  }), [user, userDoc, loading, authError]);
+  }), [user, userDoc, loading, authError, refreshUserDoc]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

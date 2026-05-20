@@ -20,7 +20,7 @@ const AdvancedTree = lazy(() => import('../components/tree/AdvancedTree'));
 
 export default function TreePage() {
   const { familyId } = useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -41,10 +41,14 @@ export default function TreePage() {
   });
 
   useEffect(() => {
-    loadData();
-  }, [familyId]);
+    if (!authLoading) {
+      loadData();
+    }
+  }, [authLoading, familyId, user?.id]);
 
   async function loadData() {
+    if (authLoading) return;
+
     if (!familyId || !user?.id) {
       setLoadError(t('tree.missing_session'));
       setLoading(false);
@@ -78,8 +82,14 @@ export default function TreePage() {
   }
 
   async function refreshMembers() {
-    const membersData = await withTimeout(getMembers(familyId), 10000, 'Refreshing tree members');
-    setMembers(membersData);
+    try {
+      const membersData = await withTimeout(getMembers(familyId), 10000, 'Refreshing tree members');
+      setMembers(membersData);
+    } catch (err) {
+      reportError(err, 'Refresh tree members after save');
+      console.error('[TreePage] Member reload failed after save/delete', err);
+      throw err;
+    }
   }
 
   function handleAddRelative(member, relationType = 'child') {

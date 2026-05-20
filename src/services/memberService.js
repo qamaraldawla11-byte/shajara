@@ -3,6 +3,9 @@
 // ============================================
 
 import { requireSupabase } from './supabaseClient';
+import { withTimeout } from '../utils/asyncTimeout';
+
+const MEMBER_REQUEST_TIMEOUT_MS = 10000;
 
 function logMemberSupabaseError(operation, error) {
   console.error(`[MemberService:${operation}]`, {
@@ -21,20 +24,24 @@ function logMemberSupabaseError(operation, error) {
  */
 export async function addMember(familyId, memberData) {
   const client = requireSupabase();
-  const { data, error } = await client.rpc('add_member_transaction', {
-    p_family_id: familyId,
-    p_first_name: memberData.firstName,
-    p_last_name: memberData.lastName || '',
-    p_gender: memberData.gender,
-    p_birth_date: memberData.birthDate || null,
-    p_death_date: memberData.deathDate || null,
-    p_is_alive: memberData.isAlive !== false,
-    p_photo_url: memberData.photoURL || null,
-    p_linked_user_id: memberData.linkedUserId || null,
-    p_father_id: memberData.fatherId || null,
-    p_mother_id: memberData.motherId || null,
-    p_spouse_ids: memberData.spouseIds || [],
-  });
+  const { data, error } = await withTimeout(
+    client.rpc('add_member_transaction', {
+      p_family_id: familyId,
+      p_first_name: memberData.firstName,
+      p_last_name: memberData.lastName || '',
+      p_gender: memberData.gender,
+      p_birth_date: memberData.birthDate || null,
+      p_death_date: memberData.deathDate || null,
+      p_is_alive: memberData.isAlive !== false,
+      p_photo_url: memberData.photoURL || null,
+      p_linked_user_id: memberData.linkedUserId || null,
+      p_father_id: memberData.fatherId || null,
+      p_mother_id: memberData.motherId || null,
+      p_spouse_ids: memberData.spouseIds || [],
+    }),
+    MEMBER_REQUEST_TIMEOUT_MS,
+    'Adding member'
+  );
 
   if (error) {
     logMemberSupabaseError('addMember', error);
@@ -49,11 +56,15 @@ export async function addMember(familyId, memberData) {
 export async function getMembers(familyId) {
   if (!familyId) return [];
   const client = requireSupabase();
-  const { data, error } = await client
-    .from('members')
-    .select('*')
-    .eq('family_id', familyId)
-    .order('created_at', { ascending: true });
+  const { data, error } = await withTimeout(
+    client
+      .from('members')
+      .select('*')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: true }),
+    MEMBER_REQUEST_TIMEOUT_MS,
+    'Loading members'
+  );
 
   if (error) {
     logMemberSupabaseError('getMembers', error);
@@ -68,12 +79,16 @@ export async function getMembers(familyId) {
 export async function getMemberById(familyId, memberId) {
   if (!familyId || !memberId) return null;
   const client = requireSupabase();
-  const { data, error } = await client
-    .from('members')
-    .select('*')
-    .eq('id', memberId)
-    .eq('family_id', familyId)
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    client
+      .from('members')
+      .select('*')
+      .eq('id', memberId)
+      .eq('family_id', familyId)
+      .maybeSingle(),
+    MEMBER_REQUEST_TIMEOUT_MS,
+    'Loading member'
+  );
 
   if (error) {
     logMemberSupabaseError('getMemberById', error);
@@ -109,11 +124,15 @@ export async function updateMember(familyId, memberId, updates) {
 
   dbUpdates.updated_at = new Date().toISOString();
 
-  const { error } = await client
-    .from('members')
-    .update(dbUpdates)
-    .eq('id', memberId)
-    .eq('family_id', familyId);
+  const { error } = await withTimeout(
+    client
+      .from('members')
+      .update(dbUpdates)
+      .eq('id', memberId)
+      .eq('family_id', familyId),
+    MEMBER_REQUEST_TIMEOUT_MS,
+    'Updating member'
+  );
 
   if (error) {
     logMemberSupabaseError('updateMember', error);
@@ -126,10 +145,14 @@ export async function updateMember(familyId, memberId, updates) {
  */
 export async function deleteMember(familyId, memberId) {
   const client = requireSupabase();
-  const { error } = await client.rpc('delete_member_transaction', {
-    p_family_id: familyId,
-    p_member_id: memberId,
-  });
+  const { error } = await withTimeout(
+    client.rpc('delete_member_transaction', {
+      p_family_id: familyId,
+      p_member_id: memberId,
+    }),
+    MEMBER_REQUEST_TIMEOUT_MS,
+    'Deleting member'
+  );
 
   if (error) {
     logMemberSupabaseError('deleteMember', error);

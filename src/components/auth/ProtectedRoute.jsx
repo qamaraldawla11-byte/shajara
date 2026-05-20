@@ -25,6 +25,10 @@ export default function ProtectedRoute({ children }) {
     return () => clearTimeout(timeoutId);
   }, [loading]);
 
+  if (loading && isAuthenticated) {
+    return children;
+  }
+
   if (loading && !routeTimedOut) {
     return (
       <div className="loading-screen">

@@ -49,13 +49,14 @@ export default function DashboardPage() {
     }
 
     try {
-      if (isMounted) setLoading(true);
+      if (isMounted && families.length === 0) setLoading(true);
       const data = await withTimeout(getUserFamilies(), 10000, 'Loading your families');
       if (isMounted) setFamilies(data);
     } catch (err) {
       reportError(err, 'Load dashboard families');
+      console.error('[DashboardPage] Family reload failed', err);
       toast.error('Failed to load families.');
-      if (isMounted) setFamilies([]);
+      if (isMounted && families.length === 0) setFamilies([]);
     } finally {
       if (isMounted) setLoading(false);
     }
