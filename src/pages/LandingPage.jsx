@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, GitBranch, HeartHandshake, Lock, MessageSquare, Share2, ShieldCheck, Sparkles, TreePine, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 const features = [
   {
@@ -44,6 +45,7 @@ export default function LandingPage() {
           <span>Shajara</span>
         </Link>
         <div className="landing-nav-actions">
+          <ThemeToggle className="public-theme-toggle" />
           <Link to="/login" className="btn btn-ghost">Sign in</Link>
           <Link to={primaryTarget} className="btn btn-primary">
             {isAuthenticated ? 'Open dashboard' : 'Get started'}
@@ -60,8 +62,8 @@ export default function LandingPage() {
           </div>
           <h1>Preserve your family story in one beautiful, shared place.</h1>
           <p>
-            Shajara helps families build secure digital trees, invite relatives,
-            document relationships, and keep memories connected across generations.
+            Shajara brings your family tree, memories, and trusted relatives together
+            in a private space built for heritage that lasts.
           </p>
           <div className="landing-hero-actions">
             <Link to={primaryTarget} className="btn btn-primary btn-lg">
@@ -70,11 +72,17 @@ export default function LandingPage() {
             </Link>
             <Link to="/login" className="btn btn-secondary btn-lg">Continue with Google</Link>
           </div>
+          <p className="landing-hero-note">
+            Start with one person, then let parents, siblings, cousins, and stories find their place.
+          </p>
         </div>
 
         <div className="landing-preview" aria-label="Family tree preview">
           <div className="preview-header">
-            <span>Al Noor Family</span>
+            <div>
+              <span>Al Noor Family</span>
+              <small>Private heritage workspace</small>
+            </div>
             <span className="badge badge-primary">Live tree</span>
           </div>
           <div className="preview-tree">

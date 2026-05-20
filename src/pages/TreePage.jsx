@@ -2,12 +2,15 @@ import { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getFamilyById, getUserRole } from '../services/familyService';
-import { getMembers } from '../services/memberService';
+import { deleteMember, getMembers } from '../services/memberService';
 import { getErrorMessage, reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 import FamilyTree from '../components/tree/FamilyTree';
+import AddMemberModal from '../components/members/AddMemberModal';
+import EditMemberModal from '../components/members/EditMemberModal';
 import { EmptyState, LoadingState } from '../components/ui/AsyncState';
 import { getTreeStats } from '../utils/treeBuilder';
+import { hasPermission } from '../utils/constants';
 import { ArrowLeft, Users, GitBranch, Heart, Layout, Maximize2, Printer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useReactToPrint } from 'react-to-print';
@@ -27,10 +30,13 @@ export default function TreePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [viewMode, setViewMode] = useState('classic'); // 'classic' or 'advanced'
+  const [role, setRole] = useState(null);
+  const [editingMember, setEditingMember] = useState(null);
+  const [addingRelative, setAddingRelative] = useState(null);
 
   const handlePrint = useReactToPrint({
     contentRef: treeRef,
-    documentTitle: `${family?.name || 'Family'} - Family Tree`,
+    documentTitle: `${family?.name || t('common.family')} - ${t('family.family_tree')}`,
   });
 
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function TreePage() {
 
   async function loadData() {
     if (!familyId || !user?.id) {
-      setLoadError('Missing family or user session.');
+      setLoadError(t('tree.missing_session'));
       setLoading(false);
       return;
     }
@@ -58,10 +64,11 @@ export default function TreePage() {
       }
 
       setFamily(familyData);
+      setRole(userRole);
       setMembers(membersData);
     } catch (err) {
       reportError(err, 'Load tree');
-      const message = getErrorMessage(err, 'Failed to load tree.');
+      const message = getErrorMessage(err, t('tree.load_failed'));
       setLoadError(message);
       toast.error(message);
     } finally {
@@ -69,19 +76,42 @@ export default function TreePage() {
     }
   }
 
+  async function refreshMembers() {
+    const membersData = await getMembers(familyId);
+    setMembers(membersData);
+  }
+
+  function handleAddRelative(member, relationType = 'child') {
+    setAddingRelative({ member, relationType });
+  }
+
+  async function handleDeleteMember(member) {
+    const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
+    if (!confirm(t('tree.remove_confirm', { name: fullName || t('common.unknown') }))) return;
+
+    try {
+      await deleteMember(familyId, member.id);
+      await refreshMembers();
+      toast.success(t('tree.member_removed'));
+    } catch (err) {
+      reportError(err, 'Delete member from tree');
+      toast.error(getErrorMessage(err, t('tree.remove_failed')));
+    }
+  }
+
   if (loading) {
-    return <LoadingState label="Preparing tree..." />;
+    return <LoadingState label={t('tree.preparing')} />;
   }
 
   if (loadError) {
     return (
       <EmptyState
         icon={GitBranch}
-        title="Tree could not be loaded"
+        title={t('tree.could_not_load')}
         message={loadError}
         action={(
           <button className="btn btn-primary" onClick={() => navigate(`/family/${familyId}`)}>
-            Back to family
+            {t('common.back_to_family')}
           </button>
         )}
       />
@@ -89,6 +119,9 @@ export default function TreePage() {
   }
 
   const stats = getTreeStats(members);
+  const canAddMember = hasPermission(role, 'addMember');
+  const canEditMember = hasPermission(role, 'editMember');
+  const canDeleteMember = hasPermission(role, 'deleteMember');
 
   return (
     <div className="tree-page animate-fade-in">
@@ -98,7 +131,7 @@ export default function TreePage() {
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => navigate(`/family/${familyId}`)}
-            aria-label="Back to family"
+            aria-label={t('common.back_to_family')}
           >
             <ArrowLeft size={20} />
           </button>
@@ -126,7 +159,7 @@ export default function TreePage() {
           </div>
 
           <div className="tree-actions">
-            <button className="btn btn-secondary btn-icon" onClick={() => handlePrint()} title="Print PDF" aria-label="Print tree as PDF">
+            <button className="btn btn-secondary btn-icon" onClick={() => handlePrint()} title={t('tree.print')} aria-label={t('tree.print')}>
               <Printer size={18} />
             </button>
 
@@ -134,8 +167,8 @@ export default function TreePage() {
               <button 
                 className={`toggle-btn ${viewMode === 'classic' ? 'active' : ''}`}
                 onClick={() => setViewMode('classic')}
-                title="Classic View"
-                aria-label="Classic tree view"
+                title={t('tree.classic_view')}
+                aria-label={t('tree.classic_view')}
                 aria-pressed={viewMode === 'classic'}
               >
                 <Layout size={18} />
@@ -143,8 +176,8 @@ export default function TreePage() {
               <button 
                 className={`toggle-btn ${viewMode === 'advanced' ? 'active' : ''}`}
                 onClick={() => setViewMode('advanced')}
-                title="Advanced View"
-                aria-label="Advanced tree view"
+                title={t('tree.advanced_view')}
+                aria-label={t('tree.advanced_view')}
                 aria-pressed={viewMode === 'advanced'}
               >
                 <Maximize2 size={18} />
@@ -161,12 +194,12 @@ export default function TreePage() {
             <EmptyState
               icon={GitBranch}
               title={t('tree.no_members')}
-              message="Add family members to see the tree visualization."
+              message={t('tree.no_members_message')}
               action={<button
                 className="btn btn-primary"
                 onClick={() => navigate(`/family/${familyId}`)}
               >
-                Go to Members
+                {t('tree.go_to_members')}
               </button>}
             />
           ) : (
@@ -174,12 +207,40 @@ export default function TreePage() {
               <FamilyTree members={members} />
             ) : (
               <Suspense fallback={<div className="loading-screen tree-loading"><div className="spinner"></div></div>}>
-                <AdvancedTree members={members} />
+                <AdvancedTree
+                  members={members}
+                  canAdd={canAddMember}
+                  canEdit={canEditMember}
+                  canDelete={canDeleteMember}
+                  onAddRelative={handleAddRelative}
+                  onEdit={setEditingMember}
+                  onDelete={handleDeleteMember}
+                />
               </Suspense>
             )
           )}
         </div>
       </div>
+
+      {addingRelative && (
+        <AddMemberModal
+          familyId={familyId}
+          members={members}
+          relationContext={addingRelative}
+          onClose={() => setAddingRelative(null)}
+          onAdded={refreshMembers}
+        />
+      )}
+
+      {editingMember && (
+        <EditMemberModal
+          familyId={familyId}
+          member={editingMember}
+          members={members}
+          onClose={() => setEditingMember(null)}
+          onUpdated={refreshMembers}
+        />
+      )}
     </div>
   );
 }

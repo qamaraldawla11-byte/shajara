@@ -3,11 +3,48 @@
 // ============================================
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../services/supabaseClient';
-import { signInWithGoogle, logOut, ensureUserProfile, getUserDoc } from '../services/authService';
+import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
+import {
+  signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  sendPasswordReset,
+  logOut,
+  ensureUserProfile,
+  getUserDoc,
+} from '../services/authService';
 import { reportError } from '../services/errorService';
 
 const AuthContext = createContext(null);
+const AUTH_TIMEOUT_MS = 8000;
+const PROFILE_TIMEOUT_MS = 6000;
+
+function createFallbackProfile(sessionUser) {
+  if (!sessionUser) return null;
+
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email,
+    display_name: sessionUser.user_metadata?.full_name || sessionUser.email || 'Family member',
+    photo_url: sessionUser.user_metadata?.avatar_url || null,
+    created_at: sessionUser.created_at || null,
+    updated_at: new Date().toISOString(),
+    isFallback: true,
+  };
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -26,8 +63,20 @@ export function AuthProvider({ children }) {
       }
 
       setUser(sessionUser);
-      const profile = await ensureUserProfile(sessionUser);
-      setUserDoc(profile);
+      try {
+        const profile = await withTimeout(
+          ensureUserProfile(sessionUser),
+          PROFILE_TIMEOUT_MS,
+          'Profile synchronization'
+        );
+        if (!isMounted) return;
+        setUserDoc(profile || createFallbackProfile(sessionUser));
+      } catch (error) {
+        if (!isMounted) return;
+        reportError(error, 'Profile synchronization');
+        setAuthError(error);
+        setUserDoc(createFallbackProfile(sessionUser));
+      }
     }
 
     async function initializeAuth() {
@@ -35,7 +84,15 @@ export function AuthProvider({ children }) {
       setAuthError(null);
 
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        if (!isSupabaseConfigured) {
+          throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+        }
+
+        const { data: { session }, error } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_TIMEOUT_MS,
+          'Auth session loading'
+        );
         if (error) throw error;
         if (!isMounted) return;
         await syncSessionUser(session?.user || null);
@@ -51,6 +108,12 @@ export function AuthProvider({ children }) {
     }
 
     initializeAuth();
+
+    if (!isSupabaseConfigured) {
+      return () => {
+        isMounted = false;
+      };
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -85,9 +148,42 @@ export function AuthProvider({ children }) {
   const login = async () => {
     try {
       setAuthError(null);
-      await signInWithGoogle();
+        await signInWithGoogle();
     } catch (error) {
       reportError(error, 'Login');
+      setAuthError(error);
+      throw error;
+    }
+  };
+
+  const loginWithEmail = async (email, password) => {
+    try {
+      setAuthError(null);
+      await signInWithEmail(email, password);
+    } catch (error) {
+      reportError(error, 'Email login');
+      setAuthError(error);
+      throw error;
+    }
+  };
+
+  const signupWithEmail = async (email, password, displayName) => {
+    try {
+      setAuthError(null);
+      await signUpWithEmail(email, password, displayName);
+    } catch (error) {
+      reportError(error, 'Email sign up');
+      setAuthError(error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email) => {
+    try {
+      setAuthError(null);
+      await sendPasswordReset(email);
+    } catch (error) {
+      reportError(error, 'Password reset');
       setAuthError(error);
       throw error;
     }
@@ -126,6 +222,9 @@ export function AuthProvider({ children }) {
     loading,
     authError,
     login,
+    loginWithEmail,
+    signupWithEmail,
+    resetPassword,
     logout,
     refreshUserDoc,
     isAuthenticated: !!user,

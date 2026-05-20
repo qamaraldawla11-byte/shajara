@@ -23,12 +23,14 @@ import {
   Trash2,
   Share2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function FamilyPage() {
   const { familyId } = useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [family, setFamily] = useState(null);
   const [members, setMembers] = useState([]);
@@ -42,11 +44,15 @@ export default function FamilyPage() {
 
   useEffect(() => {
     let isMounted = true;
-    loadFamily(isMounted);
+    if (!authLoading) {
+      loadFamily(isMounted);
+    }
     return () => { isMounted = false; };
-  }, [familyId]);
+  }, [authLoading, familyId, user?.id]);
 
   async function loadFamily(isMounted = true) {
+    if (authLoading) return;
+
     if (!familyId || !user?.id) {
       if (isMounted) {
         setLoadError('Missing family or user session.');
@@ -66,7 +72,10 @@ export default function FamilyPage() {
       if (!isMounted) return;
 
       if (!familyData || !userRole) {
-        navigate('/dashboard', { replace: true });
+        setLoadError(!familyData ? 'Family was not found or is not accessible.' : 'You do not have access to this family.');
+        setFamily(null);
+        setRole(null);
+        setMembers([]);
         return;
       }
 
@@ -138,14 +147,14 @@ export default function FamilyPage() {
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => navigate('/dashboard')}
-            aria-label="Back to dashboard"
+            aria-label={t('common.back_to_dashboard')}
           >
             <ArrowLeft size={20} />
           </button>
           <div>
             <h1 className="page-title">{family.name}</h1>
             <div className="page-meta-row">
-              <p className="page-subtitle">{family.description || 'Family tree'}</p>
+              <p className="page-subtitle">{family.description || t('family.family_tree')}</p>
               <span className={`badge ${ROLE_COLORS[role]}`}>{ROLE_LABELS[role]}</span>
             </div>
           </div>
@@ -158,12 +167,12 @@ export default function FamilyPage() {
               id="invite-btn"
             >
               <Share2 size={18} />
-              Invite
+              {t('family.invite')}
             </button>
           )}
           <Link to={`/family/${familyId}/tree`} className="btn btn-secondary">
             <TreePine size={18} />
-            View Tree
+            {t('family.view_tree')}
           </Link>
           {hasPermission(role, 'addMember') && (
             <button
@@ -172,7 +181,7 @@ export default function FamilyPage() {
               id="add-member-btn"
             >
               <Plus size={18} />
-              Add Member
+              {t('family.add_member')}
             </button>
           )}
         </div>
@@ -182,7 +191,7 @@ export default function FamilyPage() {
       <div className="family-stats-bar">
         <div className="family-stat">
           <Users size={16} />
-          <span>{members.length} members</span>
+          <span>{members.length} {t('family.members')}</span>
         </div>
         {hasPermission(role, 'deleteFamily') && (
           <button
@@ -191,7 +200,7 @@ export default function FamilyPage() {
             className="btn btn-ghost btn-sm danger-action"
           >
             <Trash2 size={14} />
-            {deleting ? 'Deleting...' : 'Delete Family'}
+            {deleting ? t('family.deleting') : t('family.delete_family')}
           </button>
         )}
       </div>
@@ -200,11 +209,11 @@ export default function FamilyPage() {
       {members.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No members yet"
-          message="Start building your family tree by adding the first member."
+          title={t('family.no_members')}
+          message={t('family.no_members_message')}
           action={hasPermission(role, 'addMember') && (
             <button className="btn btn-primary" onClick={() => setShowAddMember(true)}>
-              <Plus size={18} /> Add First Member
+              <Plus size={18} /> {t('family.add_first_member')}
             </button>
           )}
         />
@@ -248,6 +257,7 @@ export default function FamilyPage() {
         <InvitePanel
           familyId={familyId}
           familyName={family.name}
+          canRevoke={hasPermission(role, 'deleteMember')}
           onClose={() => setShowInvites(false)}
         />
       )}

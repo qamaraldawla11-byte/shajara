@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createInvite, getFamilyInvites, deactivateInvite } from '../../services/inviteService';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import { X, Copy, CheckCircle, Trash2, Plus, QrCode } from 'lucide-react';
@@ -7,38 +7,50 @@ import { useTranslation } from 'react-i18next';
 import { reportError, getErrorMessage } from '../../services/errorService';
 import { useToast } from '../../contexts/ToastContext';
 
-export default function InvitePanel({ familyId, familyName, onClose }) {
+export default function InvitePanel({ familyId, familyName, canRevoke = false, onClose }) {
   const toast = useToast();
   const { t } = useTranslation();
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [role, setRole] = useState(ROLES.VIEWER);
   const [copied, setCopied] = useState('');
   const [showQR, setShowQR] = useState(null);
 
-  useEffect(() => { loadInvites(); }, []);
-
-  async function loadInvites() {
+  const loadInvites = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
     try {
       const data = await getFamilyInvites(familyId);
       setInvites(data.filter(i => i.isActive));
     } catch (err) {
-      reportError(err, 'Load invites');
-      toast.error('Failed to load invites.');
+      reportError(err, 'Load invites from invites table');
+      const permissionCodes = ['42501', 'PGRST301'];
+      const isPermissionError = permissionCodes.includes(err?.code) || err?.status === 401 || err?.status === 403;
+      const isNetworkError = !err?.code && !err?.status;
+      const message = isPermissionError
+        ? t('invite.permission_error')
+        : isNetworkError
+          ? t('invite.network_error')
+          : getErrorMessage(err, t('invite.load_failed'));
+      setLoadError(message);
+      toast.error(message);
     }
     finally { setLoading(false); }
-  }
+  }, [familyId, toast]);
+
+  useEffect(() => { loadInvites(); }, [loadInvites]);
 
   async function handleCreate() {
     setCreating(true);
     try {
       await createInvite(familyId, role);
       await loadInvites();
-      toast.success('Invite created.');
+      toast.success(t('invite.created'));
     } catch (err) {
       reportError(err, 'Create invite');
-      toast.error(getErrorMessage(err, 'Failed to create invite.'));
+      toast.error(getErrorMessage(err, t('invite.create_failed')));
     }
     finally { setCreating(false); }
   }
@@ -47,11 +59,11 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
     try {
       await deactivateInvite(code);
       await loadInvites();
-      toast.success('Invite deactivated.');
+      toast.success(t('invite.deactivated'));
     }
     catch (err) {
       reportError(err, 'Deactivate invite');
-      toast.error(getErrorMessage(err, 'Failed to deactivate invite.'));
+      toast.error(getErrorMessage(err, t('invite.deactivate_failed')));
     }
   }
 
@@ -59,7 +71,7 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
     const link = `${window.location.origin}/join?code=${code}`;
     navigator.clipboard.writeText(link);
     setCopied(code);
-    toast.success('Invite link copied.');
+    toast.success(t('invite.copied'));
     setTimeout(() => setCopied(''), 2000);
   }
 
@@ -67,34 +79,38 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
         <div className="modal-header">
-          <h2>{t('dashboard.join_family')}</h2>
+          <h2>{familyName ? t('invite.title', { familyName }) : t('dashboard.join_family')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={20} /></button>
         </div>
         <div className="modal-body">
           <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-end' }}>
             <div className="input-group" style={{ flex: 1 }}>
-              <label>Role for new members</label>
+              <label>{t('invite.role_for_new_members')}</label>
               <select className="select" value={role} onChange={e => setRole(e.target.value)}>
-                <option value={ROLES.VIEWER}>Viewer</option>
-                <option value={ROLES.EDITOR}>Editor</option>
+                <option value={ROLES.VIEWER}>{t('invite.viewer')}</option>
+                <option value={ROLES.EDITOR}>{t('invite.editor')}</option>
               </select>
             </div>
             <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
-              <Plus size={16} /> {creating ? 'Creating...' : 'Generate Code'}
+              <Plus size={16} /> {creating ? t('invite.creating') : t('invite.generate_code')}
             </button>
           </div>
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 'var(--space-md) 0' }} />
 
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 'var(--space-sm)' }}>
-            Active Invite Links
+            {t('invite.active_links')}
           </p>
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-lg)' }}><div className="spinner"></div></div>
+          ) : loadError ? (
+            <div className="form-error" role="alert">
+              {loadError}
+            </div>
           ) : invites.length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 'var(--space-lg)', fontSize: 'var(--font-size-sm)' }}>
-              No active invite links. Generate one above.
+              {t('invite.empty')}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
@@ -107,15 +123,17 @@ export default function InvitePanel({ familyId, familyName, onClose }) {
                       {inv.usedCount}/{inv.maxUses}
                     </span>
                     <div style={{ display: 'flex', gap: '2px' }}>
-                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowQR(inv.code === showQR ? null : inv.code)} title="QR Code">
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowQR(inv.code === showQR ? null : inv.code)} title={t('invite.qr_code')}>
                         <QrCode size={14} />
                       </button>
-                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleCopy(inv.code)} title="Copy Link">
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleCopy(inv.code)} title={t('invite.copy_link')}>
                         {copied === inv.code ? <CheckCircle size={14} style={{ color: 'var(--color-success)' }} /> : <Copy size={14} />}
                       </button>
-                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeactivate(inv.code)} title="Deactivate" style={{ color: 'var(--color-danger)' }}>
-                        <Trash2 size={14} />
-                      </button>
+                      {canRevoke && (
+                        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeactivate(inv.code)} title={t('invite.deactivate')} style={{ color: 'var(--color-danger)' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                   

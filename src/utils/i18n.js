@@ -20,4 +20,14 @@ i18n
     }
   });
 
+i18n.on('languageChanged', (lng) => {
+  const direction = lng?.startsWith('ar') ? 'rtl' : 'ltr';
+  document.documentElement.lang = lng || 'en';
+  document.documentElement.dir = direction;
+});
+
+const initialDirection = i18n.language?.startsWith('ar') ? 'rtl' : 'ltr';
+document.documentElement.lang = i18n.language || 'en';
+document.documentElement.dir = initialDirection;
+
 export default i18n;

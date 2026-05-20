@@ -1,16 +1,17 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { TreePine, LayoutDashboard, LogOut, Users, MessageSquare, ChevronDown, Menu, X as CloseIcon } from 'lucide-react';
+import { TreePine, LayoutDashboard, LogOut, Users, MessageSquare, ChevronDown, Menu, X as CloseIcon, Bell, Globe2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { getUserFamilies } from '../../services/familyService';
 import { reportError } from '../../services/errorService';
+import ThemeToggle from '../ui/ThemeToggle';
 
 export default function AppLayout() {
   const { user, userDoc, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [families, setFamilies] = useState([]);
   const [showFamilies, setShowFamilies] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -41,6 +42,10 @@ export default function AppLayout() {
     navigate('/login', { replace: true });
   }
 
+  function toggleLanguage() {
+    i18n.changeLanguage(i18n.language?.startsWith('ar') ? 'en' : 'ar');
+  }
+
   return (
     <div className={`app-layout ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
       {/* Mobile Nav Header */}
@@ -49,7 +54,11 @@ export default function AppLayout() {
           <TreePine size={24} />
           <span>Shajara</span>
         </div>
-        <button className="btn btn-ghost btn-icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <button
+          className="btn btn-ghost btn-icon"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        >
           {isMobileMenuOpen ? <CloseIcon size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -80,6 +89,7 @@ export default function AppLayout() {
               <button 
                 className="sidebar-section-header" 
                 onClick={() => setShowFamilies(!showFamilies)}
+                aria-expanded={showFamilies}
               >
                 <Users size={18} />
                 <span>{t('dashboard.families')}</span>
@@ -107,6 +117,11 @@ export default function AppLayout() {
             <MessageSquare size={18} />
             <span>{t('common.chat')}</span>
           </NavLink>
+
+          <NavLink to="/notifications" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <Bell size={18} />
+            <span>{t('common.notifications')}</span>
+          </NavLink>
         </nav>
 
         <div className="sidebar-footer">
@@ -121,9 +136,16 @@ export default function AppLayout() {
               <span className="sidebar-user-email">{user?.email}</span>
             </div>
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Sign out" id="logout-btn">
-            <LogOut size={18} />
-          </button>
+          <div className="sidebar-footer-actions">
+            <ThemeToggle />
+            <button className="btn btn-ghost btn-icon language-toggle" onClick={toggleLanguage} title={t('common.language')} aria-label={t('common.language')}>
+              <Globe2 size={18} />
+              <span>{i18n.language?.startsWith('ar') ? 'EN' : 'ع'}</span>
+            </button>
+            <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Sign out" aria-label="Sign out" id="logout-btn">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </aside>
 

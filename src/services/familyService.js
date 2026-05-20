@@ -4,6 +4,20 @@
 
 import { requireSupabase } from './supabaseClient';
 
+const RETRY_DELAY_MS = 350;
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function getAuthenticatedUserId(client) {
+  const { data, error } = await client.auth.getUser();
+  if (error) throw error;
+  return data.user?.id || null;
+}
+
 /**
  * Create a new family and assign the current user as admin atomically.
  */
@@ -39,16 +53,35 @@ export async function getFamilyById(familyId) {
  */
 export async function getUserFamilies() {
   const client = requireSupabase();
-  const { data, error } = await client.rpc('get_my_families');
+  const userId = await getAuthenticatedUserId(client);
+  if (!userId) return [];
 
-  if (!error) return (data || []).map(mapFamilyFromDb);
+  let rpcError = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const { data, error } = await client.rpc('get_my_families');
+
+    if (!error && data?.length) {
+      return data.map(mapFamilyFromDb);
+    }
+
+    if (!error && attempt === 0) {
+      await wait(RETRY_DELAY_MS);
+      continue;
+    }
+
+    if (!error) break;
+    rpcError = error;
+    break;
+  }
 
   const { data: fallbackData, error: fallbackError } = await client
     .from('family_roles')
     .select('families(*)')
+    .eq('user_id', userId)
     .order('joined_at', { ascending: false });
 
-  if (fallbackError) throw error;
+  if (fallbackError) throw rpcError || fallbackError;
   return (fallbackData || [])
     .map((row) => row.families)
     .filter(Boolean)
@@ -61,6 +94,8 @@ export async function getUserFamilies() {
 export async function getUserRole(familyId, userId) {
   if (!familyId || !userId) return null;
   const client = requireSupabase();
+  const authenticatedUserId = await getAuthenticatedUserId(client);
+  if (!authenticatedUserId) return null;
 
   const { data: roleData, error: roleError } = await client.rpc('current_user_role', {
     p_family_id: familyId,

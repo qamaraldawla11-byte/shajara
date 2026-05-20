@@ -1,11 +1,12 @@
-import { supabase } from './supabaseClient';
+import { requireSupabase } from './supabaseClient';
 import { reportError } from './errorService';
 
 /**
  * Log an activity
  */
 export async function logActivity(familyId, userId, type, details = {}) {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { error } = await client
     .from('activity_logs')
     .insert({
       family_id: familyId,
@@ -23,7 +24,10 @@ export async function logActivity(familyId, userId, type, details = {}) {
  * Get activity logs for a family
  */
 export async function getActivityLogs(familyId, limit = 20) {
-  const { data, error } = await supabase
+  if (!familyId) return [];
+
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('activity_logs')
     .select('*, user:user_id(display_name, photo_url)')
     .eq('family_id', familyId)
@@ -38,7 +42,8 @@ export async function getActivityLogs(familyId, limit = 20) {
  * Create a notification for a user
  */
 export async function createNotification(userId, type, title, content, link = '') {
-  const { data, error } = await supabase
+  const client = requireSupabase();
+  const { error } = await client
     .from('notifications')
     .insert({
       user_id: userId,
@@ -57,7 +62,10 @@ export async function createNotification(userId, type, title, content, link = ''
  * Get notifications for a user
  */
 export async function getNotifications(userId) {
-  const { data, error } = await supabase
+  if (!userId) return [];
+
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('notifications')
     .select('*')
     .eq('user_id', userId)
@@ -71,7 +79,8 @@ export async function getNotifications(userId) {
  * Mark notification as read
  */
 export async function markNotificationRead(notificationId) {
-  const { error } = await supabase
+  const client = requireSupabase();
+  const { error } = await client
     .from('notifications')
     .update({ is_read: true })
     .eq('id', notificationId);

@@ -17,7 +17,7 @@ import { Plus, UserPlus, TreePine, Users, FolderTree, ShieldCheck } from 'lucide
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
-  const { user, userDoc, refreshUserDoc } = useAuth();
+  const { user, userDoc, loading: authLoading, refreshUserDoc } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -28,11 +28,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let isMounted = true;
-    loadFamilies(isMounted);
+    if (!authLoading) {
+      loadFamilies(isMounted);
+    }
     return () => { isMounted = false; };
-  }, [user?.id, userDoc?.updated_at]);
+  }, [authLoading, user?.id, userDoc?.updated_at]);
 
   async function loadFamilies(isMounted = true) {
+    if (authLoading) return;
+
     if (!user) {
       if (isMounted) {
         setFamilies([]);
@@ -42,11 +46,13 @@ export default function DashboardPage() {
     }
 
     try {
+      if (isMounted) setLoading(true);
       const data = await getUserFamilies();
       if (isMounted) setFamilies(data);
     } catch (err) {
       reportError(err, 'Load dashboard families');
       toast.error('Failed to load families.');
+      if (isMounted) setFamilies([]);
     } finally {
       if (isMounted) setLoading(false);
     }
@@ -121,13 +127,13 @@ export default function DashboardPage() {
           {!loading && families.length > 0 && (
             <section className="dashboard-guidance" aria-label="Recommended next step">
               <div>
-                <span className="dashboard-guidance-label">Next best step</span>
-                <h2>Invite one trusted relative to help complete the story.</h2>
-                <p>Families grow faster when one person adds names and another adds memories, photos, and missing relationships.</p>
+                <span className="dashboard-guidance-label">{t('dashboard.next_step')}</span>
+                <h2>{t('dashboard.invite_relative_story')}</h2>
+                <p>{t('dashboard.family_growth_hint')}</p>
               </div>
               <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
                 <UserPlus size={18} />
-                Join another family
+                {t('dashboard.join_another_family')}
               </button>
             </section>
           )}
@@ -139,7 +145,7 @@ export default function DashboardPage() {
             <EmptyState
               icon={TreePine}
               title={t('dashboard.no_families')}
-              message="Create your first family tree or join an existing one with an invite code."
+              message={t('dashboard.empty_message')}
               action={(
                 <div className="empty-state-actions">
                 <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
@@ -169,8 +175,8 @@ export default function DashboardPage() {
           <div className="dashboard-trust-card">
             <ShieldCheck size={22} />
             <div>
-              <h3>Private by default</h3>
-              <p>Only invited members can access family spaces, trees, and conversations.</p>
+              <h3>{t('dashboard.private_by_default')}</h3>
+              <p>{t('dashboard.private_by_default_text')}</p>
             </div>
           </div>
         </aside>

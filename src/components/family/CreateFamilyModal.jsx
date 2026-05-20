@@ -7,9 +7,11 @@ import { createFamily } from '../../services/familyService';
 import { reportError, getErrorMessage } from '../../services/errorService';
 import { useToast } from '../../contexts/ToastContext';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function CreateFamilyModal({ onClose, onCreated }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +20,7 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Family name is required.');
+      setError(t('family_form.family_name_required'));
       return;
     }
 
@@ -28,11 +30,11 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
     try {
       await createFamily(name.trim(), description.trim());
       await onCreated();
-      toast.success('Family created.');
+      toast.success(t('family_form.created'));
       onClose();
     } catch (err) {
       reportError(err, 'Create family');
-      const message = getErrorMessage(err, 'Failed to create family. Please try again.');
+      const message = getErrorMessage(err, t('family_form.create_failed'));
       setError(message);
       toast.error(message);
     } finally {
@@ -44,7 +46,7 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Create New Family</h2>
+          <h2>{t('family_form.create_title')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose}>
             <X size={20} />
           </button>
@@ -55,12 +57,12 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
             {error && <div className="form-error">{error}</div>}
 
             <div className="input-group">
-              <label htmlFor="family-name">Family Name *</label>
+              <label htmlFor="family-name">{t('family_form.family_name')} *</label>
               <input
                 id="family-name"
                 className="input"
                 type="text"
-                placeholder="e.g., The Al-Rashid Family"
+                placeholder={t('family_form.family_name_placeholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
@@ -69,12 +71,12 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
             </div>
 
             <div className="input-group">
-              <label htmlFor="family-desc">Description (optional)</label>
+              <label htmlFor="family-desc">{t('family_form.description')}</label>
               <input
                 id="family-desc"
                 className="input"
                 type="text"
-                placeholder="A brief description of this family"
+                placeholder={t('family_form.description_placeholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={200}
@@ -84,7 +86,7 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
 
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -92,7 +94,7 @@ export default function CreateFamilyModal({ onClose, onCreated }) {
               disabled={loading || !name.trim()}
               id="create-family-submit"
             >
-              {loading ? 'Creating...' : 'Create Family'}
+              {loading ? t('family_form.creating') : t('dashboard.create_family')}
             </button>
           </div>
         </form>

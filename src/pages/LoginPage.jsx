@@ -11,13 +11,14 @@ import { reportError } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 import { LoadingState } from '../components/ui/AsyncState';
+import ThemeToggle from '../components/ui/ThemeToggle';
 
 export default function LoginPage() {
   const { login, loginWithEmail, signupWithEmail, resetPassword, isAuthenticated, loading } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [signingIn, setSigningIn] = useState(false);
   const [mode, setMode] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -45,9 +46,9 @@ export default function LoginPage() {
       await login();
       // OAuth redirects the browser, so we don't need to navigate here
     } catch (err) {
-      setError('Failed to sign in. Please try again.');
+      setError(t('auth.signin_failed'));
       reportError(err, 'Login page');
-      toast.error('Failed to sign in. Please try again.');
+      toast.error(t('auth.signin_failed'));
     } finally {
       setSigningIn(false);
     }
@@ -58,17 +59,17 @@ export default function LoginPage() {
     setError('');
 
     if (!form.email.trim()) {
-      setError('Email is required.');
+      setError(t('auth.email_required'));
       return;
     }
 
     if (mode !== 'reset' && form.password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError(t('auth.password_short'));
       return;
     }
 
     if (mode === 'signup' && !form.displayName.trim()) {
-      setError('Your name is required.');
+      setError(t('auth.name_required'));
       return;
     }
 
@@ -77,16 +78,16 @@ export default function LoginPage() {
     try {
       if (mode === 'signup') {
         await signupWithEmail(form.email, form.password, form.displayName);
-        toast.success('Account created. Check your email if confirmation is required.');
+        toast.success(t('auth.account_created'));
       } else if (mode === 'reset') {
         await resetPassword(form.email);
-        toast.success('Password reset email sent.');
+        toast.success(t('auth.reset_sent'));
         setMode('login');
       } else {
         await loginWithEmail(form.email, form.password);
       }
     } catch (err) {
-      const message = err?.message || 'Authentication failed. Please try again.';
+      const message = err?.message || t('auth.auth_failed');
       setError(message);
       reportError(err, 'Email auth form');
       toast.error(message);
@@ -96,7 +97,7 @@ export default function LoginPage() {
   };
 
   if (loading) {
-    return <LoadingState label="Checking your session..." />;
+    return <LoadingState label={t('auth.checking_session')} />;
   }
 
   return (
@@ -110,14 +111,13 @@ export default function LoginPage() {
           </div>
 
           <h1 className="login-title">
-            Your Family's
+            {t('auth.digital_roots_1')}
             <br />
-            <span className="login-title-accent">Digital Roots</span>
+            <span className="login-title-accent">{t('auth.digital_roots_2')}</span>
           </h1>
 
           <p className="login-subtitle">
-            Build, connect, and preserve your family tree. 
-            A private network where your family's story lives on.
+            {t('auth.subtitle')}
           </p>
 
           <div className="login-features">
@@ -126,8 +126,8 @@ export default function LoginPage() {
                 <TreePine size={20} />
               </div>
               <div>
-                <strong>Family Trees</strong>
-                <p>Create and visualize your ancestry</p>
+                <strong>{t('auth.family_trees')}</strong>
+                <p>{t('auth.family_trees_text')}</p>
               </div>
             </div>
             <div className="login-feature">
@@ -135,8 +135,8 @@ export default function LoginPage() {
                 <Users size={20} />
               </div>
               <div>
-                <strong>Connect Relatives</strong>
-                <p>Invite family members to collaborate</p>
+                <strong>{t('auth.connect_relatives')}</strong>
+                <p>{t('auth.connect_relatives_text')}</p>
               </div>
             </div>
             <div className="login-feature">
@@ -144,8 +144,8 @@ export default function LoginPage() {
                 <Shield size={20} />
               </div>
               <div>
-                <strong>Private & Secure</strong>
-                <p>Your family data stays protected</p>
+                <strong>{t('auth.private_secure')}</strong>
+                <p>{t('auth.private_secure_text')}</p>
               </div>
             </div>
             <div className="login-feature">
@@ -153,8 +153,8 @@ export default function LoginPage() {
                 <Share2 size={20} />
               </div>
               <div>
-                <strong>Easy Sharing</strong>
-                <p>Share access via invite codes</p>
+                <strong>{t('auth.easy_sharing')}</strong>
+                <p>{t('auth.easy_sharing_text')}</p>
               </div>
             </div>
           </div>
@@ -165,17 +165,20 @@ export default function LoginPage() {
           <div className="login-form-content">
             <div className="auth-panel-header">
               <div>
-                <h2>{mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Reset password' : 'Welcome back'}</h2>
-                <p>{mode === 'signup' ? 'Start your private family workspace' : mode === 'reset' ? 'Receive a secure reset link' : 'Sign in to continue to your dashboard'}</p>
+                <h2>{mode === 'signup' ? t('auth.create_account') : mode === 'reset' ? t('auth.reset_password') : t('auth.welcome_back')}</h2>
+                <p>{mode === 'signup' ? t('auth.signup_subtitle') : mode === 'reset' ? t('auth.reset_subtitle') : t('auth.login_subtitle')}</p>
               </div>
-              <button type="button" className="btn btn-ghost btn-icon" onClick={toggleLanguage} title="Change language">
-                <Globe2 size={18} />
-              </button>
+              <div className="auth-panel-actions">
+                <ThemeToggle />
+                <button type="button" className="btn btn-ghost btn-icon" onClick={toggleLanguage} title={t('common.language')} aria-label={t('common.language')}>
+                  <Globe2 size={18} />
+                </button>
+              </div>
             </div>
 
             {!isSupabaseConfigured && (
               <div className="login-error">
-                Supabase is not configured for this deployment.
+                {t('auth.supabase_missing')}
               </div>
             )}
 
@@ -184,14 +187,14 @@ export default function LoginPage() {
             )}
 
             <div className="auth-tabs" role="tablist" aria-label="Authentication mode">
-              <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Sign in</button>
-              <button type="button" className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Create account</button>
+              <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>{t('auth.sign_in')}</button>
+              <button type="button" className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>{t('auth.create_account')}</button>
             </div>
 
             <form className="auth-form" onSubmit={handleEmailSubmit}>
               {mode === 'signup' && (
                 <div className="input-group auth-input">
-                  <label htmlFor="display-name">Full name</label>
+                  <label htmlFor="display-name">{t('auth.full_name')}</label>
                   <UserRound size={17} />
                   <input
                     id="display-name"
@@ -205,7 +208,7 @@ export default function LoginPage() {
               )}
 
               <div className="input-group auth-input">
-                <label htmlFor="email">Email</label>
+                <label htmlFor="email">{t('auth.email')}</label>
                 <Mail size={17} />
                 <input
                   id="email"
@@ -221,7 +224,7 @@ export default function LoginPage() {
 
               {mode !== 'reset' && (
                 <div className="input-group auth-input">
-                  <label htmlFor="password">Password</label>
+                  <label htmlFor="password">{t('auth.password')}</label>
                   <Lock size={17} />
                   <input
                     id="password"
@@ -233,7 +236,7 @@ export default function LoginPage() {
                     disabled={signingIn}
                     required
                   />
-                  <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t('auth.hide_password') : t('auth.show_password')}>
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
@@ -241,15 +244,15 @@ export default function LoginPage() {
 
               <button type="submit" className="btn btn-primary auth-submit" disabled={signingIn || !isSupabaseConfigured}>
                 {signingIn ? <div className="spinner" style={{ width: 18, height: 18 }}></div> : <LogIn size={18} />}
-                {mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Sign in'}
+                {mode === 'signup' ? t('auth.create_account') : mode === 'reset' ? t('auth.send_reset_link') : t('auth.sign_in')}
               </button>
             </form>
 
             <button type="button" className="auth-link-btn" onClick={() => setMode(mode === 'reset' ? 'login' : 'reset')}>
-              {mode === 'reset' ? 'Back to sign in' : 'Forgot your password?'}
+              {mode === 'reset' ? t('auth.back_to_sign_in') : t('auth.forgot_password')}
             </button>
 
-            <div className="auth-divider"><span>or</span></div>
+            <div className="auth-divider"><span>{t('auth.or')}</span></div>
 
             <button
               className="btn-google"
@@ -279,13 +282,13 @@ export default function LoginPage() {
                   />
                 </svg>
               )}
-              {signingIn ? 'Signing in...' : 'Continue with Google'}
+              {signingIn ? t('auth.signing_in') : t('auth.continue_google')}
             </button>
 
 
 
             <p className="login-terms">
-              By signing in, you agree to our Terms of Service and Privacy Policy.
+              {t('auth.terms')}
             </p>
           </div>
         </div>

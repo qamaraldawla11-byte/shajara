@@ -4,6 +4,18 @@
 
 import { requireSupabase } from './supabaseClient';
 
+function logMemberSupabaseError(operation, error) {
+  console.error(`[MemberService:${operation}]`, {
+    tableName: 'members',
+    code: error?.code,
+    status: error?.status,
+    statusCode: error?.statusCode,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+  }, error);
+}
+
 /**
  * Add a new member to a family atomically.
  */
@@ -24,7 +36,10 @@ export async function addMember(familyId, memberData) {
     p_spouse_ids: memberData.spouseIds || [],
   });
 
-  if (error) throw error;
+  if (error) {
+    logMemberSupabaseError('addMember', error);
+    throw error;
+  }
   return data;
 }
 
@@ -40,7 +55,10 @@ export async function getMembers(familyId) {
     .eq('family_id', familyId)
     .order('created_at', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    logMemberSupabaseError('getMembers', error);
+    throw error;
+  }
   return (data || []).map(mapMemberFromDb);
 }
 
@@ -57,7 +75,10 @@ export async function getMemberById(familyId, memberId) {
     .eq('family_id', familyId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    logMemberSupabaseError('getMemberById', error);
+    throw error;
+  }
   if (!data) return null;
   return mapMemberFromDb(data);
 }
@@ -94,7 +115,10 @@ export async function updateMember(familyId, memberId, updates) {
     .eq('id', memberId)
     .eq('family_id', familyId);
 
-  if (error) throw error;
+  if (error) {
+    logMemberSupabaseError('updateMember', error);
+    throw error;
+  }
 }
 
 /**
@@ -107,7 +131,10 @@ export async function deleteMember(familyId, memberId) {
     p_member_id: memberId,
   });
 
-  if (error) throw error;
+  if (error) {
+    logMemberSupabaseError('deleteMember', error);
+    throw error;
+  }
 }
 
 function mapMemberFromDb(row) {

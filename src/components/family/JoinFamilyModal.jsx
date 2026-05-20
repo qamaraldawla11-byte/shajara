@@ -7,9 +7,11 @@ import { joinFamily } from '../../services/inviteService';
 import { reportError, getErrorMessage } from '../../services/errorService';
 import { useToast } from '../../contexts/ToastContext';
 import { X, UserPlus, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [code, setCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
   async function handleSubmit(e) {
     e.preventDefault();
     if (!code.trim()) {
-      setError('Please enter an invite code.');
+      setError(t('join.code_required'));
       return;
     }
 
@@ -40,10 +42,10 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
       const result = await joinFamily(code.trim());
       setSuccess(result);
       await onJoined();
-      toast.success(`Joined ${result.familyName}.`);
+      toast.success(t('join.joined', { familyName: result.familyName }));
     } catch (err) {
       reportError(err, 'Join family');
-      const message = getErrorMessage(err, 'Failed to join family.');
+      const message = getErrorMessage(err, t('join.failed'));
       setError(message);
       toast.error(message);
     } finally {
@@ -55,7 +57,7 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Join Family</h2>
+          <h2>{t('join.title')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose}>
             <X size={20} />
           </button>
@@ -64,13 +66,13 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
         {success ? (
           <div className="modal-body" style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}>
             <CheckCircle size={48} style={{ color: 'var(--color-success)', marginBottom: 'var(--space-md)' }} />
-            <h3 style={{ marginBottom: 'var(--space-sm)' }}>Welcome!</h3>
+            <h3 style={{ marginBottom: 'var(--space-sm)' }}>{t('join.welcome')}</h3>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-              You've joined <strong>{success.familyName}</strong> as <strong>{success.role}</strong>.
+              {t('join.joined', { familyName: success.familyName })} <strong>{success.role}</strong>
             </p>
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
               <button className="btn btn-primary" onClick={onClose}>
-                Continue
+                {t('join.continue')}
               </button>
             </div>
           </div>
@@ -80,12 +82,12 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
               {error && <div className="form-error">{error}</div>}
 
               <div className="input-group">
-                <label htmlFor="invite-code">Invite Code</label>
+                <label htmlFor="invite-code">{t('join.invite_code')}</label>
                 <input
                   id="invite-code"
                   className="input"
                   type="text"
-                  placeholder="Enter 8-character code"
+                  placeholder={t('join.invite_placeholder')}
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   autoFocus
@@ -100,13 +102,13 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
               </div>
 
               <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                Ask a family admin for their invite code to join.
+                {t('join.hint')}
               </p>
             </div>
 
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -115,7 +117,7 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
                 id="join-family-submit"
               >
                 <UserPlus size={18} />
-                {loading ? 'Joining...' : 'Join Family'}
+                {loading ? t('join.joining') : t('join.title')}
               </button>
             </div>
           </form>

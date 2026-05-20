@@ -35,8 +35,8 @@ export const PERMISSIONS = {
   viewTree: [ROLES.ADMIN, ROLES.EDITOR, ROLES.VIEWER],
   addMember: [ROLES.ADMIN, ROLES.EDITOR],
   editMember: [ROLES.ADMIN, ROLES.EDITOR],
-  deleteMember: [ROLES.ADMIN],
-  generateInvite: [ROLES.ADMIN],
+  deleteMember: [ROLES.ADMIN, ROLES.EDITOR],
+  generateInvite: [ROLES.ADMIN, ROLES.EDITOR],
   manageRoles: [ROLES.ADMIN],
   deleteFamily: [ROLES.ADMIN],
 };

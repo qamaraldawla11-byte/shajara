@@ -9,10 +9,14 @@ export function getErrorMessage(error, fallback = GENERIC_ERROR_MESSAGE) {
 export function reportError(error, context = 'Application') {
   const payload = {
     context,
+    name: error?.name,
     message: getErrorMessage(error),
     code: error?.code,
+    status: error?.status,
+    statusCode: error?.statusCode,
     details: error?.details,
     hint: error?.hint,
+    stack: error?.stack,
   };
 
   console.error(`[${context}]`, payload, error);

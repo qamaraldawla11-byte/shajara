@@ -5,6 +5,18 @@
 import { requireSupabase } from './supabaseClient';
 import { generateInviteCode, ROLES } from '../utils/constants';
 
+function logInviteSupabaseError(operation, tableName, error) {
+  console.error(`[InviteService:${operation}]`, {
+    tableName,
+    code: error?.code,
+    status: error?.status,
+    statusCode: error?.statusCode,
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+  }, error);
+}
+
 /**
  * Generate an invite code for a family atomically.
  */
@@ -26,6 +38,7 @@ export async function createInvite(familyId, role = ROLES.VIEWER) {
 
     if (!error) return data;
     lastError = error;
+    logInviteSupabaseError('createInvite', 'invites', error);
 
     if (error.code !== '23505') break;
   }
@@ -63,7 +76,10 @@ export async function getFamilyInvites(familyId) {
     .eq('family_id', familyId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    logInviteSupabaseError('getFamilyInvites', 'invites', error);
+    throw error;
+  }
 
   return (data || []).map((d) => ({
     code: d.code,
@@ -88,5 +104,8 @@ export async function deactivateInvite(code) {
     p_code: code,
   });
 
-  if (error) throw error;
+  if (error) {
+    logInviteSupabaseError('deactivateInvite', 'invites', error);
+    throw error;
+  }
 }
