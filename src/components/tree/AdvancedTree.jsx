@@ -65,10 +65,10 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
     const generations = {};
     const spousePairs = new Set();
 
-    const depthCache = new Map();
+    const baseDepthCache = new Map();
 
-    function getDepth(memberId, visiting = new Set()) {
-      if (depthCache.has(memberId)) return depthCache.get(memberId);
+    function getBaseDepth(memberId, visiting = new Set()) {
+      if (baseDepthCache.has(memberId)) return baseDepthCache.get(memberId);
       const m = memberMap.get(memberId);
       if (!m || visiting.has(memberId)) return 0;
 
@@ -79,16 +79,74 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
       const motherId = m.relationships?.motherId;
       
       let parentDepth = 0;
-      if (fatherId && memberMap.has(fatherId)) parentDepth = Math.max(parentDepth, getDepth(fatherId, nextVisiting));
-      if (motherId && memberMap.has(motherId)) parentDepth = Math.max(parentDepth, getDepth(motherId, nextVisiting));
+      if (fatherId && memberMap.has(fatherId)) parentDepth = Math.max(parentDepth, getBaseDepth(fatherId, nextVisiting) + 1);
+      if (motherId && memberMap.has(motherId)) parentDepth = Math.max(parentDepth, getBaseDepth(motherId, nextVisiting) + 1);
       
-      const depth = parentDepth + 1;
-      depthCache.set(memberId, depth);
+      const depth = parentDepth;
+      baseDepthCache.set(memberId, depth);
       return depth;
     }
 
+    const spouseGroupParent = new Map(members.map((member) => [member.id, member.id]));
+
+    function findSpouseGroup(id) {
+      const current = spouseGroupParent.get(id);
+      if (current === id) return current;
+      const root = findSpouseGroup(current);
+      spouseGroupParent.set(id, root);
+      return root;
+    }
+
+    function unionSpouseGroup(a, b) {
+      if (!spouseGroupParent.has(a) || !spouseGroupParent.has(b)) return;
+      const rootA = findSpouseGroup(a);
+      const rootB = findSpouseGroup(b);
+      if (rootA !== rootB) spouseGroupParent.set(rootB, rootA);
+    }
+
+    members.forEach((member) => {
+      (member.relationships?.spouseIds || []).forEach((spouseId) => unionSpouseGroup(member.id, spouseId));
+    });
+
+    const spouseGroupMembers = new Map();
+    members.forEach((member) => {
+      const groupId = findSpouseGroup(member.id);
+      if (!spouseGroupMembers.has(groupId)) spouseGroupMembers.set(groupId, []);
+      spouseGroupMembers.get(groupId).push(member);
+    });
+
+    const spouseGroupDepths = new Map();
+    spouseGroupMembers.forEach((groupMembers, groupId) => {
+      spouseGroupDepths.set(groupId, Math.max(...groupMembers.map((member) => getBaseDepth(member.id))));
+    });
+
+    // Spouse groups are the visual unit; parent links then push whole groups below ancestors.
+    for (let i = 0; i < members.length; i += 1) {
+      let changed = false;
+      members.forEach((member) => {
+        const childGroup = findSpouseGroup(member.id);
+        [member.relationships?.fatherId, member.relationships?.motherId].forEach((parentId) => {
+          if (!parentId || !memberMap.has(parentId)) return;
+          const parentGroup = findSpouseGroup(parentId);
+          if (parentGroup === childGroup) return;
+
+          const requiredDepth = (spouseGroupDepths.get(parentGroup) || 0) + 1;
+          if (requiredDepth > (spouseGroupDepths.get(childGroup) || 0)) {
+            spouseGroupDepths.set(childGroup, requiredDepth);
+            changed = true;
+          }
+        });
+      });
+      if (!changed) break;
+    }
+
+    const visualDepths = new Map();
+    members.forEach((member) => {
+      visualDepths.set(member.id, spouseGroupDepths.get(findSpouseGroup(member.id)) || 0);
+    });
+
     members.forEach(m => {
-      const depth = getDepth(m.id);
+      const depth = visualDepths.get(m.id) || 0;
       if (!generations[depth]) generations[depth] = [];
       generations[depth].push(m);
     });
@@ -126,7 +184,8 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
 
       return Array.from(groups.values()).map((clusterMembers) => {
         const sortedMembers = [...clusterMembers].sort((a, b) => {
-          const spouseLinked = (a.relationships?.spouseIds || []).includes(b.id);
+          const spouseLinked = (a.relationships?.spouseIds || []).includes(b.id)
+            || (b.relationships?.spouseIds || []).includes(a.id);
           if (spouseLinked) return a.gender === 'male' ? -1 : 1;
           return `${a.firstName} ${a.lastName || ''}`.localeCompare(`${b.firstName} ${b.lastName || ''}`);
         });
@@ -141,6 +200,7 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
           width: sortedMembers.length * NODE_WIDTH + Math.max(0, sortedMembers.length - 1) * SPOUSE_GAP,
           parentIds,
           anchor: 0,
+          hasParentAnchor: false,
         };
       });
     }
@@ -152,15 +212,20 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
       clusters.forEach((cluster) => {
         const anchors = cluster.parentIds.map((id) => previousPositions.get(id)?.x).filter((value) => Number.isFinite(value));
         cluster.anchor = anchors.length ? anchors.reduce((sum, value) => sum + value, 0) / anchors.length : 0;
+        cluster.hasParentAnchor = anchors.length > 0;
       });
 
       clusters.sort((a, b) => a.anchor - b.anchor || (a.members[0].createdAt || '').localeCompare(b.members[0].createdAt || ''));
 
+      const usesParentAnchors = clusters.some((cluster) => cluster.hasParentAnchor);
       const totalWidth = clusters.reduce((sum, cluster) => sum + cluster.width, 0) + Math.max(0, clusters.length - 1) * CLUSTER_GAP;
-      let cursor = -totalWidth / 2;
+      let cursor = usesParentAnchors && clusters.length
+        ? Math.min(...clusters.map((cluster) => cluster.anchor - cluster.width / 2))
+        : -totalWidth / 2;
 
       clusters.forEach((cluster) => {
-        const clusterStart = cursor;
+        const desiredStart = usesParentAnchors ? cluster.anchor - cluster.width / 2 : cursor;
+        const clusterStart = Math.max(cursor, desiredStart);
         cluster.members.forEach((m, mIdx) => {
           const x = clusterStart + mIdx * (NODE_WIDTH + SPOUSE_GAP);
           const y = dIdx * GENERATION_GAP;
@@ -221,13 +286,15 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
             const memberPosition = previousPositions.get(m.id);
             const spousePosition = previousPositions.get(spouseId);
             const memberIsLeft = (memberPosition?.x || 0) <= (spousePosition?.x || 0);
+            const sourceId = memberIsLeft ? m.id : spouseId;
+            const targetId = memberIsLeft ? spouseId : m.id;
             edges.push({
               id: `s-${m.id}-${spouseId}`,
-              source: m.id,
-              target: spouseId,
+              source: sourceId,
+              target: targetId,
               type: 'straight',
-              sourceHandle: memberIsLeft ? 'spouse-right' : 'spouse-left',
-              targetHandle: memberIsLeft ? 'spouse-left' : 'spouse-right',
+              sourceHandle: 'spouse-right',
+              targetHandle: 'spouse-left',
               className: 'spouse-edge branch-edge-spouse',
               style: { stroke: 'var(--tree-edge-spouse)', strokeDasharray: '3 8', strokeWidth: 1.35 },
             });

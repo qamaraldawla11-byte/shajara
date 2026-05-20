@@ -20,50 +20,111 @@ export function buildFamilyTree(members) {
   const memberMap = new Map();
   members.forEach((m) => memberMap.set(m.id, m));
 
-  // Find root members (no father AND no mother in the dataset)
-  const rootMembers = members.filter(
-    (m) => !m.relationships?.fatherId && !m.relationships?.motherId
-  );
+  const spouseGroupParent = new Map(members.map((member) => [member.id, member.id]));
+
+  function findGroup(id) {
+    const current = spouseGroupParent.get(id);
+    if (current === id) return current;
+    const root = findGroup(current);
+    spouseGroupParent.set(id, root);
+    return root;
+  }
+
+  function unionGroup(a, b) {
+    if (!spouseGroupParent.has(a) || !spouseGroupParent.has(b)) return;
+    const rootA = findGroup(a);
+    const rootB = findGroup(b);
+    if (rootA !== rootB) spouseGroupParent.set(rootB, rootA);
+  }
+
+  members.forEach((member) => {
+    (member.relationships?.spouseIds || []).forEach((spouseId) => unionGroup(member.id, spouseId));
+  });
+
+  const groups = new Map();
+  members.forEach((member) => {
+    const groupId = findGroup(member.id);
+    if (!groups.has(groupId)) groups.set(groupId, []);
+    groups.get(groupId).push(member);
+  });
+
+  const groupList = Array.from(groups.values()).map((groupMembers) => {
+    const sortedMembers = [...groupMembers].sort((a, b) => {
+      const spouseLinked = (a.relationships?.spouseIds || []).includes(b.id)
+        || (b.relationships?.spouseIds || []).includes(a.id);
+      if (spouseLinked) return a.gender === 'male' ? -1 : 1;
+      return `${a.firstName} ${a.lastName || ''}`.localeCompare(`${b.firstName} ${b.lastName || ''}`);
+    });
+
+    const ids = new Set(sortedMembers.map((member) => member.id));
+    const hasParentInDataset = sortedMembers.some((member) => {
+      const fatherId = member.relationships?.fatherId;
+      const motherId = member.relationships?.motherId;
+      return (fatherId && memberMap.has(fatherId) && !ids.has(fatherId))
+        || (motherId && memberMap.has(motherId) && !ids.has(motherId));
+    });
+
+    const earliestCreatedAt = sortedMembers
+      .map((member) => member.createdAt || '')
+      .filter(Boolean)
+      .sort()[0] || '';
+
+    return {
+      id: findGroup(sortedMembers[0].id),
+      members: sortedMembers,
+      ids,
+      primary: sortedMembers[0],
+      hasParentInDataset,
+      earliestCreatedAt,
+    };
+  });
+
+  // Find root spouse groups (no parent group in the dataset)
+  const rootGroups = groupList.filter((group) => !group.hasParentInDataset);
 
   // If no roots found, use all members as roots (fallback)
-  const roots = rootMembers.length > 0 ? rootMembers : members;
+  const roots = rootGroups.length > 0 ? rootGroups : groupList;
 
   // Track processed members to avoid duplicates
-  const processed = new Set();
+  const processedGroups = new Set();
 
-  function buildNode(member) {
-    if (processed.has(member.id)) return null;
-    processed.add(member.id);
+  function buildNode(group, lineage = new Set()) {
+    if (processedGroups.has(group.id) || lineage.has(group.id)) return null;
+    processedGroups.add(group.id);
 
-    // Find spouses
-    const spouses = (member.relationships?.spouseIds || [])
-      .map((id) => memberMap.get(id))
-      .filter(Boolean);
+    const nextLineage = new Set(lineage);
+    nextLineage.add(group.id);
 
-    // Find children (members whose fatherId or motherId = this member's id)
-    const children = members
-      .filter(
-        (m) =>
-          !processed.has(m.id) &&
-          (m.relationships?.fatherId === member.id ||
-            m.relationships?.motherId === member.id)
-      )
-      .map((child) => buildNode(child))
+    const childGroups = groupList
+      .filter((candidate) => {
+        if (candidate.id === group.id || processedGroups.has(candidate.id)) return false;
+        return candidate.members.some((member) => (
+          group.ids.has(member.relationships?.fatherId)
+          || group.ids.has(member.relationships?.motherId)
+        ));
+      })
+      .sort((a, b) => (a.earliestCreatedAt || '').localeCompare(b.earliestCreatedAt || ''));
+
+    const children = childGroups
+      .map((childGroup) => buildNode(childGroup, nextLineage))
       .filter(Boolean);
 
     return {
-      member,
-      spouses,
+      member: group.primary,
+      spouses: group.members.filter((member) => member.id !== group.primary.id),
       children,
     };
   }
 
-  const tree = roots.map((root) => buildNode(root)).filter(Boolean);
+  const tree = roots
+    .sort((a, b) => (a.earliestCreatedAt || '').localeCompare(b.earliestCreatedAt || ''))
+    .map((root) => buildNode(root))
+    .filter(Boolean);
 
   // Add any unprocessed members as standalone roots
-  const remaining = members.filter((m) => !processed.has(m.id));
-  remaining.forEach((m) => {
-    const node = buildNode(m);
+  const remaining = groupList.filter((group) => !processedGroups.has(group.id));
+  remaining.forEach((group) => {
+    const node = buildNode(group);
     if (node) tree.push(node);
   });
 
