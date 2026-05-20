@@ -12,8 +12,10 @@ import FamilyCard from '../components/family/FamilyCard';
 import CreateFamilyModal from '../components/family/CreateFamilyModal';
 import JoinFamilyModal from '../components/family/JoinFamilyModal';
 import ActivityWidget from '../components/dashboard/ActivityWidget';
-import { EmptyState, LoadingState } from '../components/ui/AsyncState';
-import { Plus, UserPlus, TreePine, Users, FolderTree, ShieldCheck } from 'lucide-react';
+import { LoadingState } from '../components/ui/AsyncState';
+import { withTimeout } from '../utils/asyncTimeout';
+import FamilyOnboardingWizard from '../components/onboarding/FamilyOnboardingWizard';
+import { Plus, UserPlus, TreePine, Users, FolderTree, ShieldCheck, Sparkles, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function DashboardPage() {
@@ -25,6 +27,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -47,7 +50,7 @@ export default function DashboardPage() {
 
     try {
       if (isMounted) setLoading(true);
-      const data = await getUserFamilies();
+      const data = await withTimeout(getUserFamilies(), 10000, 'Loading your families');
       if (isMounted) setFamilies(data);
     } catch (err) {
       reportError(err, 'Load dashboard families');
@@ -63,6 +66,11 @@ export default function DashboardPage() {
       await refreshUserDoc();
     }
     await loadFamilies();
+  }
+
+  async function handleOnboardingFinished(nextFamilyId) {
+    await handleFamilyChange();
+    if (nextFamilyId) navigate(`/family/${nextFamilyId}`);
   }
 
   const totalMembers = families.reduce((sum, f) => sum + (f.memberCount || 0), 0);
@@ -142,29 +150,37 @@ export default function DashboardPage() {
           {loading ? (
             <LoadingState label="Loading your families..." />
           ) : families.length === 0 ? (
-            <EmptyState
-              icon={TreePine}
-              title={t('dashboard.no_families')}
-              message={t('dashboard.empty_message')}
-              action={(
-                <div className="empty-state-actions">
-                <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-                  <Plus size={18} /> {t('dashboard.create_family')}
+            <section className="onboarding-empty card">
+              <div className="empty-illustration"><TreePine size={42} /><Sparkles size={22} /></div>
+              <div>
+                <span className="dashboard-guidance-label">First tree</span>
+                <h2>{t('dashboard.no_families')}</h2>
+                <p>{t('dashboard.empty_message')} Start with one ancestor, then add parents, spouse, children, and a trusted collaborator.</p>
+              </div>
+              <div className="empty-state-actions">
+                <button className="btn btn-primary" onClick={() => setShowOnboarding(true)}>
+                  <Sparkles size={18} /> Guided setup
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowCreate(true)}>
+                  <Plus size={18} /> Quick create
                 </button>
                 <button className="btn btn-secondary" onClick={() => setShowJoin(true)}>
                   <UserPlus size={18} /> {t('dashboard.join_family')}
                 </button>
-                </div>
-              )}
-            />
+              </div>
+            </section>
           ) : (
             <div className="grid grid-2">
               {families.map((family) => (
-                <FamilyCard
-                  key={family.id}
-                  family={family}
-                  onClick={() => navigate(`/family/${family.id}`)}
-                />
+                <div key={family.id} className="family-dashboard-item">
+                  <FamilyCard
+                    family={family}
+                    onClick={() => navigate(`/family/${family.id}`)}
+                  />
+                  <button className="btn btn-primary continue-tree-btn" onClick={() => navigate(`/family/${family.id}/tree`)}>
+                    Continue tree <ArrowRight size={16} />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -193,6 +209,12 @@ export default function DashboardPage() {
         <JoinFamilyModal
           onClose={() => setShowJoin(false)}
           onJoined={handleFamilyChange}
+        />
+      )}
+      {showOnboarding && (
+        <FamilyOnboardingWizard
+          onClose={() => setShowOnboarding(false)}
+          onFinished={handleOnboardingFinished}
         />
       )}
     </div>

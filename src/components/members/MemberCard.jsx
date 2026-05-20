@@ -1,4 +1,4 @@
-import { Edit2, Heart, Trash2, User } from 'lucide-react';
+import { Edit2, Heart, Link as LinkIcon, Trash2, User } from 'lucide-react';
 
 export default function MemberCard({ member, members, canEdit, canDelete, onEdit, onDelete }) {
   const memberMap = new Map();
@@ -18,7 +18,7 @@ export default function MemberCard({ member, members, canEdit, canDelete, onEdit
       <div className="member-card-header">
         <div className="member-card-avatar-section">
           {member.photoURL ? (
-            <img src={member.photoURL} alt={fullName} className="avatar avatar-lg member-card-photo" />
+            <img src={member.photoURL} alt={fullName} className="avatar avatar-lg member-card-photo" loading="lazy" />
           ) : (
             <div className={`avatar avatar-lg avatar-placeholder member-avatar-${member.gender}`}>
               {initials || <User size={20} />}
@@ -32,6 +32,9 @@ export default function MemberCard({ member, members, canEdit, canDelete, onEdit
               </span>
               {member.isAlive === false && (
                 <span className="badge badge-danger">Deceased</span>
+              )}
+              {member.linkedUserId && (
+                <span className="badge badge-secondary"><LinkIcon size={12} /> Linked</span>
               )}
             </div>
           </div>

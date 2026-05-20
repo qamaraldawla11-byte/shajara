@@ -2788,6 +2788,219 @@
   color: var(--color-text-muted);
 }
 
+/* ---------- Profile ---------- */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.profile-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.profile-panel h3,
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.profile-avatar-row {
+  flex-wrap: wrap;
+}
+
+.avatar-xl {
+  width: 82px;
+  height: 82px;
+  font-size: var(--font-size-2xl);
+}
+
+.profile-form-stack,
+.profile-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.profile-link-panel {
+  grid-column: 1 / -1;
+}
+
+.profile-member-list {
+  max-height: 360px;
+  overflow: auto;
+}
+
+.profile-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.profile-member-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.tree-data-hint {
+  position: absolute;
+  z-index: 8;
+  top: var(--space-md);
+  left: var(--space-md);
+  right: var(--space-md);
+  max-width: 760px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  backdrop-filter: blur(10px);
+}
+
+.chat-room-empty {
+  padding: var(--space-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+/* ---------- Phase 3 Onboarding + Invites ---------- */
+.onboarding-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  align-items: flex-start;
+  padding: clamp(var(--space-lg), 4vw, var(--space-2xl));
+}
+
+.empty-illustration {
+  width: 92px;
+  height: 92px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(139, 92, 246, 0.14));
+  color: var(--color-primary-light);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.empty-illustration svg + svg {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  color: var(--color-accent);
+}
+
+.family-dashboard-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.continue-tree-btn {
+  align-self: flex-start;
+}
+
+.onboarding-modal {
+  max-width: 720px;
+}
+
+.modal-subtitle {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-xs);
+  padding: 0 var(--space-lg) var(--space-sm);
+}
+
+.onboarding-steps span {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-bg-tertiary);
+}
+
+.onboarding-steps span.active {
+  background: var(--color-primary);
+}
+
+.onboarding-body {
+  min-height: 330px;
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.onboarding-step > svg {
+  color: var(--color-primary);
+}
+
+.quick-relative-row {
+  display: grid;
+  grid-template-columns: auto minmax(64px, 0.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.quick-relative-row > span {
+  text-transform: capitalize;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.invite-email-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: end;
+  margin-top: var(--space-md);
+}
+
+.join-confirm-card {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.join-confirm-card svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.join-confirm-card p {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.bottom-nav {
+  display: none;
+}
+
 /* ---------- Responsive ---------- */
 .mobile-nav-header {
   display: none;
@@ -2866,6 +3079,49 @@
     min-height: 0;
     border-right: 0;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    left: var(--space-sm);
+    right: var(--space-sm);
+    bottom: var(--space-sm);
+    z-index: 80;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.92);
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(16px);
+  }
+
+  .bottom-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 54px;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .bottom-nav-link.active {
+    color: var(--color-primary-light);
+    background: rgba(16, 185, 129, 0.12);
+  }
+
+  .main-content {
+    padding-bottom: calc(84px + var(--space-md));
   }
 }
 
@@ -2976,6 +3232,19 @@
 
   .tree-container-advanced { padding: 0; }
 
+  .advanced-tree-shell {
+    min-height: 560px;
+  }
+
+  .advanced-tree-canvas .react-flow__controls {
+    transform: scale(0.92);
+    transform-origin: bottom left;
+  }
+
+  .tree-minimap {
+    display: none;
+  }
+
   .tree-stat-pill {
     flex: 1 1 120px;
     justify-content: center;
@@ -2998,6 +3267,35 @@
     position: absolute;
     inset: 0 0 0 auto;
     width: min(350px, 92vw);
+  }
+
+  .modal {
+    width: min(100%, calc(100vw - var(--space-md)));
+    max-height: calc(100vh - var(--space-md));
+  }
+
+  .modal-body {
+    max-height: calc(100vh - 190px);
+    overflow: auto;
+  }
+
+  .invite-email-row,
+  .quick-relative-row {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-email-row .btn,
+  .continue-tree-btn {
+    width: 100%;
+  }
+
+  .profile-member-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-member-row .btn {
+    width: 100%;
   }
 
   .notification-card {

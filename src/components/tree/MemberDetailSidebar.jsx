@@ -1,4 +1,4 @@
-import { X, Calendar, User, Heart, Edit, Plus, Trash2, Baby, Users } from 'lucide-react';
+import { X, Calendar, User, Heart, Edit, Plus, Trash2, Baby, Users, Link as LinkIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function MemberDetailSidebar({ member, members, onClose, canAdd, canEdit, canDelete, onAddRelative, onEdit, onDelete }) {
@@ -26,7 +26,7 @@ export default function MemberDetailSidebar({ member, members, onClose, canAdd, 
       <div className="sidebar-content">
         <div className="detail-hero">
           <div className={`detail-avatar avatar-${member.gender}`}>
-            {member.photoURL ? <img src={member.photoURL} alt={fullName} /> : `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`}
+            {member.photoURL ? <img src={member.photoURL} alt={fullName} loading="lazy" /> : `${member.firstName?.[0] || ''}${member.lastName?.[0] || ''}`}
           </div>
           <h4 dir="auto">{fullName}</h4>
           <div className="detail-badges">
@@ -34,6 +34,7 @@ export default function MemberDetailSidebar({ member, members, onClose, canAdd, 
             <span className={`badge ${member.isAlive === false ? 'badge-danger' : 'badge-primary'}`}>
               {member.isAlive === false ? t('tree.remembered') : t('tree.living')}
             </span>
+            {member.linkedUserId && <span className="badge badge-secondary"><LinkIcon size={12} /> Linked profile</span>}
           </div>
         </div>
 

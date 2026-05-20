@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Edit3, Heart, Plus, Trash2, UserRound, Users } from 'lucide-react';
+import { Edit3, Heart, Link as LinkIcon, Plus, Trash2, UserRound, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const PersonNode = ({ data }) => {
@@ -24,7 +24,7 @@ const PersonNode = ({ data }) => {
       
       <div className="organic-portrait-wrap">
         {member.photoURL ? (
-          <img src={member.photoURL} alt={fullName} className="tree-node-avatar tree-node-photo" />
+          <img src={member.photoURL} alt={fullName} className="tree-node-avatar tree-node-photo" loading="lazy" />
         ) : (
           <div className="tree-node-avatar">{initials}</div>
         )}
@@ -40,6 +40,7 @@ const PersonNode = ({ data }) => {
           {member.deathDate && <span>{member.deathDate}</span>}
           {(member.relationships?.spouseIds || []).length > 0 && <span><Heart size={11} /> {(member.relationships?.spouseIds || []).length}</span>}
           {(member.relationships?.fatherId || member.relationships?.motherId) && <span><UserRound size={11} /> {t('tree.parent_linked')}</span>}
+          {member.linkedUserId && <span><LinkIcon size={11} /> Linked</span>}
         </div>
       </div>
 

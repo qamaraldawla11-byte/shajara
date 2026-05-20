@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { TreePine, LayoutDashboard, LogOut, Users, MessageSquare, ChevronDown, Menu, X as CloseIcon, Bell, Globe2 } from 'lucide-react';
+import { TreePine, LayoutDashboard, LogOut, Users, MessageSquare, ChevronDown, Menu, X as CloseIcon, Bell, Globe2, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { getUserFamilies } from '../../services/familyService';
@@ -122,6 +122,11 @@ export default function AppLayout() {
             <Bell size={18} />
             <span>{t('common.notifications')}</span>
           </NavLink>
+
+          <NavLink to="/profile" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <UserRound size={18} />
+            <span>{t('common.profile')}</span>
+          </NavLink>
         </nav>
 
         <div className="sidebar-footer">
@@ -153,6 +158,25 @@ export default function AppLayout() {
       <main className="main-content">
         <Outlet />
       </main>
+
+      <nav className="bottom-nav" aria-label="Primary navigation">
+        <NavLink to="/dashboard" className={({ isActive }) => `bottom-nav-link ${isActive ? 'active' : ''}`}>
+          <LayoutDashboard size={19} />
+          <span>{t('common.dashboard')}</span>
+        </NavLink>
+        <NavLink to={families[0] ? `/family/${families[0].id}` : '/dashboard'} className={({ isActive }) => `bottom-nav-link ${isActive ? 'active' : ''}`}>
+          <TreePine size={19} />
+          <span>{t('common.tree')}</span>
+        </NavLink>
+        <NavLink to="/chat" className={({ isActive }) => `bottom-nav-link ${isActive ? 'active' : ''}`}>
+          <MessageSquare size={19} />
+          <span>{t('common.chat')}</span>
+        </NavLink>
+        <NavLink to="/profile" className={({ isActive }) => `bottom-nav-link ${isActive ? 'active' : ''}`}>
+          <UserRound size={19} />
+          <span>{t('common.profile')}</span>
+        </NavLink>
+      </nav>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { joinFamily } from '../../services/inviteService';
 import { reportError, getErrorMessage } from '../../services/errorService';
 import { useToast } from '../../contexts/ToastContext';
-import { X, UserPlus, CheckCircle } from 'lucide-react';
+import { X, UserPlus, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' }) {
@@ -80,6 +80,13 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               {error && <div className="form-error">{error}</div>}
+              <div className="join-confirm-card">
+                <ShieldCheck size={24} />
+                <div>
+                  <strong>Review invitation</strong>
+                  <p>Accepting adds your account to this family with the role chosen by the inviter. Rejecting closes this invite without changing your account.</p>
+                </div>
+              </div>
 
               <div className="input-group">
                 <label htmlFor="invite-code">{t('join.invite_code')}</label>
@@ -108,7 +115,7 @@ export default function JoinFamilyModal({ onClose, onJoined, initialCode = '' })
 
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>
-                {t('common.cancel')}
+                Reject
               </button>
               <button
                 type="submit"

@@ -15,6 +15,7 @@ import MemberCard from '../components/members/MemberCard';
 import InvitePanel from '../components/invite/InvitePanel';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
 import { hasPermission, ROLE_LABELS, ROLE_COLORS } from '../utils/constants';
+import { withTimeout } from '../utils/asyncTimeout';
 import {
   ArrowLeft,
   Plus,
@@ -63,11 +64,12 @@ export default function FamilyPage() {
 
     try {
       if (isMounted) setLoadError('');
-      const [familyData, userRole, membersData] = await Promise.all([
+      if (isMounted) setLoading(true);
+      const [familyData, userRole, membersData] = await withTimeout(Promise.all([
         getFamilyById(familyId),
         getUserRole(familyId, user.id),
         getMembers(familyId),
-      ]);
+      ]), 12000, 'Loading family workspace');
 
       if (!isMounted) return;
 

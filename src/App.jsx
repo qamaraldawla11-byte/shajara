@@ -15,6 +15,7 @@ const FamilyPage = lazy(() => import('./pages/FamilyPage'));
 const TreePage = lazy(() => import('./pages/TreePage'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 function PageFallback() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
                   <Route path="family/:familyId/tree" element={<TreePage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="notifications" element={<NotificationsPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

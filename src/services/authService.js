@@ -125,3 +125,30 @@ export async function getUserDoc(uid) {
   if (error) throw error;
   return data || null;
 }
+
+export async function updateUserProfile(uid, updates) {
+  const client = requireSupabase();
+  const dbUpdates = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName.trim();
+  if (updates.photoUrl !== undefined) dbUpdates.photo_url = updates.photoUrl;
+
+  const { data, error } = await client
+    .from('profiles')
+    .update(dbUpdates)
+    .eq('id', uid)
+    .select('id, email, display_name, photo_url, created_at, updated_at')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAccountPassword(password) {
+  const client = requireSupabase();
+  const { data, error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+  return data;
+}

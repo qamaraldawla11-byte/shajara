@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createInvite, getFamilyInvites, deactivateInvite } from '../../services/inviteService';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
-import { X, Copy, CheckCircle, Trash2, Plus, QrCode } from 'lucide-react';
+import { X, Copy, CheckCircle, Trash2, QrCode, Mail, Share2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import { reportError, getErrorMessage } from '../../services/errorService';
@@ -15,6 +15,7 @@ export default function InvitePanel({ familyId, familyName, canRevoke = false, o
   const [creating, setCreating] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [role, setRole] = useState(ROLES.VIEWER);
+  const [email, setEmail] = useState('');
   const [copied, setCopied] = useState('');
   const [showQR, setShowQR] = useState(null);
 
@@ -55,6 +56,22 @@ export default function InvitePanel({ familyId, familyName, canRevoke = false, o
     finally { setCreating(false); }
   }
 
+  async function handleCreateEmailInvite() {
+    setCreating(true);
+    try {
+      const invite = await createInvite(familyId, role);
+      await loadInvites();
+      const code = invite?.code || invite;
+      const link = `${window.location.origin}/join?code=${code}`;
+      window.location.href = `mailto:${encodeURIComponent(email.trim())}?subject=${encodeURIComponent(`Join ${familyName} on Shajara`)}&body=${encodeURIComponent(`You have been invited to ${familyName} on Shajara as ${ROLE_LABELS[role]}. Join here: ${link}`)}`;
+      toast.success(t('invite.created'));
+    } catch (err) {
+      reportError(err, 'Create email invite');
+      toast.error(getErrorMessage(err, t('invite.create_failed')));
+    }
+    finally { setCreating(false); }
+  }
+
   async function handleDeactivate(code) {
     try {
       await deactivateInvite(code);
@@ -89,17 +106,29 @@ export default function InvitePanel({ familyId, familyName, canRevoke = false, o
               <select className="select" value={role} onChange={e => setRole(e.target.value)}>
                 <option value={ROLES.VIEWER}>{t('invite.viewer')}</option>
                 <option value={ROLES.EDITOR}>{t('invite.editor')}</option>
+                <option value={ROLES.ADMIN}>Admin</option>
               </select>
             </div>
             <button className="btn btn-primary" onClick={handleCreate} disabled={creating}>
-              <Plus size={16} /> {creating ? t('invite.creating') : t('invite.generate_code')}
+              <Share2 size={16} /> {creating ? t('invite.creating') : t('invite.generate_code')}
+            </button>
+          </div>
+
+          <div className="invite-email-row">
+            <div className="input-group">
+              <label htmlFor="invite-email">Invite by email</label>
+              <input id="invite-email" className="input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="relative@example.com" />
+              <p className="field-hint">Creates a share link and opens your email app. Per-recipient pending email invites need a future schema change.</p>
+            </div>
+            <button className="btn btn-secondary" onClick={handleCreateEmailInvite} disabled={creating || !email.trim()}>
+              <Mail size={16} /> Email invite
             </button>
           </div>
 
           <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 'var(--space-md) 0' }} />
 
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 'var(--space-sm)' }}>
-            {t('invite.active_links')}
+            Pending share links
           </p>
 
           {loading ? (

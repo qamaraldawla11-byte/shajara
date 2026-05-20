@@ -5,6 +5,8 @@ import { Send, Hash, User, Volume2, Image as ImageIcon, MoreVertical, Search, Me
 import { useTranslation } from 'react-i18next';
 import { reportError, getErrorMessage } from '../services/errorService';
 import { useToast } from '../contexts/ToastContext';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
+import { withTimeout } from '../utils/asyncTimeout';
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -15,11 +17,12 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    loadRooms();
-  }, [user.id]);
+    if (user?.id) loadRooms();
+  }, [user?.id]);
 
   useEffect(() => {
     if (activeRoom) {
@@ -39,12 +42,15 @@ export default function ChatPage() {
 
   async function loadRooms() {
     try {
-      const data = await getChatRooms(user.id);
+      setLoading(true);
+      setLoadError('');
+      const data = await withTimeout(getChatRooms(user.id), 10000, 'Loading chat rooms');
       setRooms(data);
       if (data.length > 0) setActiveRoom(data[0]);
     } catch (err) {
       reportError(err, 'Load chat rooms');
-      toast.error('Failed to load chat rooms.');
+      setLoadError(getErrorMessage(err, 'Failed to load chat rooms.'));
+      toast.error(getErrorMessage(err, 'Failed to load chat rooms.'));
     } finally {
       setLoading(false);
     }
@@ -52,7 +58,7 @@ export default function ChatPage() {
 
   async function loadMessages(roomId) {
     try {
-      const data = await getMessages(roomId);
+      const data = await withTimeout(getMessages(roomId), 10000, 'Loading messages');
       setMessages(data);
     } catch (err) {
       reportError(err, 'Load messages');
@@ -81,7 +87,17 @@ export default function ChatPage() {
     }
   }
 
-  if (loading) return <div className="loading-screen"><div className="spinner"></div></div>;
+  if (loading) return <LoadingState label="Loading family chat rooms..." />;
+
+  if (loadError) {
+    return (
+      <ErrorState
+        title="Chat is not available"
+        message={`${loadError} Chat uses the existing chat_rooms, room_members, and messages tables; no new database objects were created.`}
+        action={<button className="btn btn-primary" onClick={loadRooms}>Try again</button>}
+      />
+    );
+  }
 
   return (
     <div className="chat-page animate-fade-in">
@@ -96,7 +112,9 @@ export default function ChatPage() {
             <input type="text" placeholder="Search chats..." aria-label="Search chats" />
           </div>
           <div className="chat-rooms-list">
-            {rooms.map(room => (
+            {rooms.length === 0 ? (
+              <div className="chat-room-empty">No family chat rooms yet.</div>
+            ) : rooms.map(room => (
               <button 
                 key={room.id} 
                 className={`chat-room-item ${activeRoom?.id === room.id ? 'active' : ''}`}
@@ -179,10 +197,11 @@ export default function ChatPage() {
               </form>
             </>
           ) : (
-            <div className="chat-placeholder">
-              <MessageSquare size={48} />
-              <h4>Select a chat to start messaging</h4>
-            </div>
+            <EmptyState
+              icon={MessageSquare}
+              title="No chat rooms yet"
+              message="Chat is backend-ready when your family has rows in chat_rooms and room_members. No schema changes were made."
+            />
           )}
         </main>
       </div>

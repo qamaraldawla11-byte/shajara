@@ -23,12 +23,41 @@ const CLUSTER_GAP = 140;
 const GENERATION_GAP = 285;
 const COMPACT_ZOOM_THRESHOLD = 0.58;
 
+function getRelationshipHealth(members) {
+  const ids = new Set(members.map((member) => member.id));
+  const missing = [];
+  const cycles = [];
+
+  members.forEach((member) => {
+    ['fatherId', 'motherId'].forEach((key) => {
+      const parentId = member.relationships?.[key];
+      if (parentId && !ids.has(parentId)) missing.push(member.id);
+    });
+  });
+
+  function visit(member, path = new Set()) {
+    if (path.has(member.id)) {
+      cycles.push(member.id);
+      return;
+    }
+    const nextPath = new Set(path);
+    nextPath.add(member.id);
+    [member.relationships?.fatherId, member.relationships?.motherId].forEach((parentId) => {
+      const parent = members.find((candidate) => candidate.id === parentId);
+      if (parent) visit(parent, nextPath);
+    });
+  }
+
+  members.forEach((member) => visit(member));
+  return { hasIssues: missing.length > 0 || cycles.length > 0 };
+}
+
 export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAddRelative, onEdit, onDelete }) {
   const [selectedMember, setSelectedMember] = useState(null);
   const [isCompactMode, setIsCompactMode] = useState(false);
 
   // Convert members to React Flow nodes and edges
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const { initialNodes, initialEdges, relationshipHealth } = useMemo(() => {
     const nodes = [];
     const edges = [];
     const memberMap = new Map(members.map((member) => [member.id, member]));
@@ -36,7 +65,10 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
     const generations = {};
     const spousePairs = new Set();
 
+    const depthCache = new Map();
+
     function getDepth(memberId, visiting = new Set()) {
+      if (depthCache.has(memberId)) return depthCache.get(memberId);
       const m = memberMap.get(memberId);
       if (!m || visiting.has(memberId)) return 0;
 
@@ -50,7 +82,9 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
       if (fatherId && memberMap.has(fatherId)) parentDepth = Math.max(parentDepth, getDepth(fatherId, nextVisiting));
       if (motherId && memberMap.has(motherId)) parentDepth = Math.max(parentDepth, getDepth(motherId, nextVisiting));
       
-      return parentDepth + 1;
+      const depth = parentDepth + 1;
+      depthCache.set(memberId, depth);
+      return depth;
     }
 
     members.forEach(m => {
@@ -120,7 +154,7 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
         cluster.anchor = anchors.length ? anchors.reduce((sum, value) => sum + value, 0) / anchors.length : 0;
       });
 
-      clusters.sort((a, b) => a.anchor - b.anchor || a.members[0].createdAt?.localeCompare?.(b.members[0].createdAt || '') || 0);
+      clusters.sort((a, b) => a.anchor - b.anchor || (a.members[0].createdAt || '').localeCompare(b.members[0].createdAt || ''));
 
       const totalWidth = clusters.reduce((sum, cluster) => sum + cluster.width, 0) + Math.max(0, clusters.length - 1) * CLUSTER_GAP;
       let cursor = -totalWidth / 2;
@@ -201,7 +235,7 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
         });
     });
 
-    return { initialNodes: nodes, initialEdges: edges };
+    return { initialNodes: nodes, initialEdges: edges, relationshipHealth: getRelationshipHealth(members) };
   }, [members, canAdd, canEdit, canDelete, onAddRelative, onEdit, onDelete]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -284,6 +318,11 @@ export default function AdvancedTree({ members, canAdd, canEdit, canDelete, onAd
   return (
     <div className={`advanced-tree-shell ${isCompactMode ? 'tree-compact-mode' : 'tree-detailed-mode'}`}>
       <div className="advanced-tree-atmosphere" aria-hidden="true" />
+      {relationshipHealth.hasIssues && (
+        <div className="tree-data-hint">
+          Relationship data incomplete. Some parent links point to missing members or circular ancestry, so this layout uses the safest available branches.
+        </div>
+      )}
       <div className="advanced-tree-canvas">
         <ReactFlow
           nodes={displayedNodes}

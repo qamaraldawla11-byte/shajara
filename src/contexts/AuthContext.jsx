@@ -14,6 +14,7 @@ import {
   getUserDoc,
 } from '../services/authService';
 import { reportError } from '../services/errorService';
+import { withTimeout } from '../utils/asyncTimeout';
 
 const AuthContext = createContext(null);
 const AUTH_TIMEOUT_MS = 8000;
@@ -31,19 +32,6 @@ function createFallbackProfile(sessionUser) {
     updated_at: new Date().toISOString(),
     isFallback: true,
   };
-}
-
-function withTimeout(promise, timeoutMs, label) {
-  let timeoutId;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
 }
 
 export function AuthProvider({ children }) {

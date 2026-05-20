@@ -10,6 +10,7 @@ import AddMemberModal from '../components/members/AddMemberModal';
 import EditMemberModal from '../components/members/EditMemberModal';
 import { EmptyState, LoadingState } from '../components/ui/AsyncState';
 import { getTreeStats } from '../utils/treeBuilder';
+import { withTimeout } from '../utils/asyncTimeout';
 import { hasPermission } from '../utils/constants';
 import { ArrowLeft, Users, GitBranch, Heart, Layout, Maximize2, Printer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -52,11 +53,11 @@ export default function TreePage() {
 
     try {
       setLoadError('');
-      const [familyData, userRole, membersData] = await Promise.all([
+      const [familyData, userRole, membersData] = await withTimeout(Promise.all([
         getFamilyById(familyId),
         getUserRole(familyId, user.id),
         getMembers(familyId),
-      ]);
+      ]), 12000, 'Preparing tree');
 
       if (!familyData || !userRole) {
         navigate('/dashboard', { replace: true });
@@ -77,7 +78,7 @@ export default function TreePage() {
   }
 
   async function refreshMembers() {
-    const membersData = await getMembers(familyId);
+    const membersData = await withTimeout(getMembers(familyId), 10000, 'Refreshing tree members');
     setMembers(membersData);
   }
 
